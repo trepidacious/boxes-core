@@ -4,7 +4,6 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import org.rebeam.boxes.core.util._
 
-import scala.Option.option2Iterable
 import java.util.concurrent.{Executors, Executor}
 import scala.collection.immutable._
 import scala.collection.mutable.WeakHashMap

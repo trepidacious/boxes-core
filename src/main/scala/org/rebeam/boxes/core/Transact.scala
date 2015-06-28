@@ -1,7 +1,5 @@
 package org.rebeam.boxes.core
 
-import org.rebeam.boxes.core.util.RWLock
-
 import java.util.concurrent.Executor
 
 trait Identifiable {
@@ -184,27 +182,6 @@ trait View
 trait Auto
 
 class TxnEarlyFailException(msg: String = "") extends Exception
-
-private class TxnMulti(txn: Txn) extends Txn{
-  val lock = RWLock()
-  override def create[T](t: T): Box[T] = lock.write{txn.create(t)}
-  override def set[T](box: Box[T], t: T): Box[T] = lock.write{txn.set(box, t)}
-  override def createReaction(f: ReactorTxn => Unit) = lock.write{txn.createReaction(f)}
-
-  override def boxRetainsReaction(box: BoxR[_], r: Reaction) = lock.write{txn.boxRetainsReaction(box, r)}
-  override def boxReleasesReaction(box: BoxR[_], r: Reaction) = lock.write{txn.boxReleasesReaction(box, r)}
-
-  override def get[T](box: BoxR[T]): T = lock.read{txn.get(box)}
-  override def revision() = txn.revision()
-  override def failEarly() = txn.failEarly()
-}
-
-/** This can be used to wrap a Txn to make it safe for concurrent multi-threaded
-  * access, by using a RWLock(). 
-  */
-object TxnMulti {
-  def apply(txn: Txn): Txn = new TxnMulti(txn)
-}
 
 class BoxException(message: String = "") extends Exception(message)
 class FailedReactionsException(message: String = "") extends BoxException(message)
