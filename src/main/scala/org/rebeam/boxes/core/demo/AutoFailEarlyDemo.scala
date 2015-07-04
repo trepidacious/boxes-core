@@ -10,10 +10,10 @@ object AutoFailEarlyDemo {
 
   def run(failEarly: Boolean) {
     val s = ShelfDefault()
-    val counter = s.create(0)
-    val slowResult = s.create(0)
+    val counter = s.now.create(0)
+    val slowResult = s.now.create(0)
     
-    val auto = s.auto{
+    val auto = s.now.auto{
       implicit t: Txn => {
         val c = counter()
         Range(0, 6).foreach(_ => {
@@ -24,7 +24,7 @@ object AutoFailEarlyDemo {
       }
     }
     
-    val view = s.view{
+    val view = s.now.view{
       implicit t: TxnR => {
         println("View, counter = " + counter() + ", slowResult = " + slowResult())
       }

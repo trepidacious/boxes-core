@@ -112,9 +112,7 @@ trait Revision {
 }
 
 trait Shelf {
-  def now: Revision
-  
-  def create[T](t: T): Box[T]
+  def currentRevision: Revision
 
   def transact[T](f: Txn => T): T
   def transact[T](f: Txn => T, p: ReactionPolicy): T
@@ -122,18 +120,25 @@ trait Shelf {
 
   def transactToRevision[T](f: Txn => T): (T, Revision)
   def transactToRevision[T](f: Txn => T, p: ReactionPolicy): (T, Revision)
-  
-  def react(f: ReactorTxn => Unit): Reaction
 
-  def view(f: TxnR => Unit): View
-  def view(f: TxnR => Unit, exe: Executor, onlyMostRecent: Boolean): View
-  
-  def unview(v: View): Boolean
-  
-  def auto[T](f: Txn => T): Auto  
-  def auto[T](f: Txn => T, exe: Executor, target: T => Unit): Auto
-  
-  def unauto(a: Auto): Boolean
+  lazy val now = new ShelfNow(this)
+}
+
+class ShelfNow(shelf: Shelf) {
+
+  def create[T](v: T): Box[T] = shelf.transact{ implicit t: Txn => Box(v) }
+  def createReaction(f: ReactorTxn => Unit) = shelf.transact{ implicit txn => txn.createReaction{f} }
+
+  def view(f: TxnR => Unit): View = shelf.transact{ implicit t: Txn => t.view(f) }
+  def view(f: TxnR => Unit, exe: Executor, onlyMostRecent: Boolean): View = shelf.transact{ implicit t: Txn => t.view(f, exe, onlyMostRecent) }
+
+  def unview(v: View): Unit = shelf.transact{ implicit t: Txn => t.unview(v) }
+
+  def auto[T](f: Txn => T): Auto = shelf.transact{ implicit t: Txn => t.auto(f) }
+  def auto[T](f: Txn => T, exe: Executor, target: T => Unit): Auto = shelf.transact{ implicit t: Txn => t.auto(f, exe, target) }
+
+  def unauto(a: Auto): Unit = shelf.transact{ implicit t: Txn => t.unauto(a) }
+
 }
 
 /**
@@ -175,6 +180,16 @@ trait Txn extends TxnR {
   def boxReleasesReaction(box: BoxR[_], r: Reaction)
   
   def failEarly(): Unit
+
+  def view(f: TxnR => Unit): View
+  def view(f: TxnR => Unit, exe: Executor, onlyMostRecent: Boolean): View
+
+  def unview(v: View): Unit
+
+  def auto[T](f: Txn => T): Auto
+  def auto[T](f: Txn => T, exe: Executor, target: T => Unit): Auto
+
+  def unauto(a: Auto): Unit
 }
 
 trait View

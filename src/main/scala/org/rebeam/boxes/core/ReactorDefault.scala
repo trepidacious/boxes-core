@@ -1,5 +1,7 @@
 package org.rebeam.boxes.core
 
+import java.util.concurrent.Executor
+
 import grizzled.slf4j.Logging
 
 private class ReactorDefault(txn: TxnForReactor, val reactionPolicy: ReactionPolicy, val maximumReactionApplicationsPerCycle: Int = 10000) extends ReactorForTxn with ReactorTxn with Logging {
@@ -190,5 +192,12 @@ private class ReactorDefault(txn: TxnForReactor, val reactionPolicy: ReactionPol
   def revision() = txn.revision
   def boxReleasesReaction(box: BoxR[_],r: Reaction) = txn.boxReleasesReaction(box, r)
   def boxRetainsReaction(box: BoxR[_],r: Reaction) = txn.boxRetainsReaction(box, r)
-  
+
+  def auto[T](f: Txn => T, exe: Executor, target: T => Unit): Auto = txn.auto(f, exe, target)
+  def auto[T](f: Txn => T): Auto = txn.auto(f)
+  def unauto(a: Auto): Unit = txn.unauto(a)
+  def unview(v: View): Unit = txn.unview(v)
+  def view(f: TxnR => Unit, exe: Executor, onlyMostRecent: Boolean): View = txn.view(f, exe, onlyMostRecent)
+  def view(f: TxnR => Unit): View = txn.view(f)
+
 }

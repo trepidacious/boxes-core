@@ -11,10 +11,10 @@ object TransactDemo {
   def main(args: Array[String]): Unit = {
     val s = ShelfDefault()
 
-    val a = s.create("a")
-    val b = s.create("b")
+    val a = s.now.create("a")
+    val b = s.now.create("b")
 
-    val view = s.view{
+    val view = s.now.view{
       implicit t: TxnR => {
         println("view, a = " + a() + ", b = " + b())
       }
@@ -43,8 +43,8 @@ object TransactDemo {
     })
     
 
-    val x = s.create(0.0)
-    val y = s.create(0.0)
+    val x = s.now.create(0.0)
+    val y = s.now.create(0.0)
     
     Range(0, 5).foreach(i => thread{
       Range(0, 1000).foreach{_ =>

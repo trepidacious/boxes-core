@@ -25,12 +25,12 @@ object PathDemo {
 //    val reaction = aFriendAndReaction._2
     
     println(">Viewing a's friend's name")
-    val v1 = s.view(implicit txn => {
+    val v1 = s.now.view(implicit txn => {
       println(a.name() + "'s friend is " + a.friend().map(_.name()))
     })
 
     println(">Viewing aFriend's name")
-    val v2 = s.view(implicit txn => {
+    val v2 = s.now.view(implicit txn => {
       println("aFriend's name is " + aFriend().map(_.name()))
     })
     

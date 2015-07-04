@@ -119,52 +119,34 @@ private class ShelfDefault extends Shelf {
   private val views = new WeakHashSet[ViewDefault]()
   private val autos = new WeakHashSet[AutoDefault[_]]()
   
-  //TODO can we do this more efficiently without a full transaction?
-  def create[T](v: T): Box[T] = transact{
-    implicit t: Txn => {
-      Box(v)
-    }
-  }
-  
-  def read[T](f: TxnR => T): T = f(new TxnRDefault(this, now))
+  def read[T](f: TxnR => T): T = f(new TxnRDefault(this, currentRevision))
 
-  def view(f: TxnR => Unit) = view(f, ShelfDefault.defaultExecutor, true)
-  
-  def view(f: TxnR => Unit, exe: Executor = ShelfDefault.defaultExecutor, onlyMostRecent: Boolean = true): View = {
-    lock.write {
-      val view = new ViewDefault(this, f, exe, onlyMostRecent)
-      views.add(view)
-      view.add(current)
-      view
-    }
-  }
+//
+//  def unview(v: View) = lock.write{
+//    v match {
+//      case vd: ViewDefault => views.remove(vd)
+//      case _ => false
+//    }
+//  }
+//
+//  def auto[T](f: Txn => T) = auto(f, ShelfDefault.defaultExecutor, (t:T) => Unit)
+//
+//  def auto[T](f: Txn => T, exe: Executor = ShelfDefault.defaultExecutor, target: T => Unit = (t: T) => Unit): Auto = {
+//    lock.write {
+//      val auto = new AutoDefault(this, f, exe, target)
+//      autos.add(auto)
+//      auto.add(current)
+//      auto
+//    }
+//  }
+//
+//  def unauto(a: Auto) = lock.write{
+//    a match {
+//      case ad: AutoDefault[_] => autos.remove(ad)
+//      case _ => false
+//    }
+//  }
 
-  def unview(v: View) = lock.write{
-    v match {
-      case vd: ViewDefault => views.remove(vd)
-      case _ => false
-    }
-  }
-  
-  def auto[T](f: Txn => T) = auto(f, ShelfDefault.defaultExecutor, (t:T) => Unit)
-  
-  def auto[T](f: Txn => T, exe: Executor = ShelfDefault.defaultExecutor, target: T => Unit = (t: T) => Unit): Auto = {
-    lock.write {
-      val auto = new AutoDefault(this, f, exe, target)
-      autos.add(auto)
-      auto.add(current)
-      auto
-    }
-  }
-  
-  def unauto(a: Auto) = lock.write{
-    a match {
-      case ad: AutoDefault[_] => autos.remove(ad)
-      case _ => false
-    }
-  }
-
-  
   def transactFromAuto[T](f: Txn => T): (T, TxnDefault) = {
     def tf(r: RevisionDefault) = new TxnDefault(this, r, ReactionImmediate)
     val result = transactRepeatedTry(f, tf, retries)
@@ -191,7 +173,7 @@ private class ShelfDefault extends Shelf {
   }
   
   private def transactTry[T, TT <: TxnDefault](f: Txn => T, transFactory: RevisionDefault => TT): Option[(T, TT, Revision)] = {
-    val t = transFactory(now)
+    val t = transFactory(currentRevision)
     val tryR = Try{
       val r = f(t)
       t.beforeCommit()
@@ -206,41 +188,43 @@ private class ShelfDefault extends Shelf {
       
       tryR match {
         case Success(r) if !current.conflictsWith(t) =>
-          //Watch new boxes, make new revision with GCed boxes deleted, and return result and successful transaction
+          //Watch new boxes, make new revision with GCed boxes deleted, and make the new updated revision
           watcher.watch(t.creates)
           reactionWatcher.watch(t.reactionCreates.keySet)
-//          println("Added reactions " + t.reactionCreates.keys.map(_.hashCode()) + ", now retaining " + t.boxReactions.values.map(_.map(_.hashCode)))
           val updated = current.updated(t.writes, watcher.deletes(), t.reactionCreates, reactionWatcher.deletes(), t.sources, t.targets, t.boxReactions)
+
+          //Add new views and autos - they will get the update revision as their first revision
+          for (view <- t.viewsToAdd) views.add(view)
+          for (auto <- t.autosToAdd) autos.add(auto)
+
+          //TODO there must be a neater way to handle the View/ViewDefault thing - maybe View should have an add method,
+          //but then ViewDefault would have to accept Revision not RevisionDefault
+          //Remove unwanted views and autos - they will not see this new revision
+          for (view <- t.viewsToRemove) view match {case v: ViewDefault => views.remove(v)}
+          for (auto <- t.autosToRemove) auto match {case a: AutoDefault[_] => autos.remove(a)}
+
+          //Move to the new revision
           revise(updated)
+
+          //Return the new revision
           Some((r, t, updated))
 
         case Failure(e: TxnEarlyFailException) => None  //Exception indicating early failure, e.g. due to conflict
         case Failure(e) => throw e                      //Exception that is not part of transaction system
         case _ => None                                  //Conflict
       }
+    }
+  }
+  
+  def currentRevision = lock.read { current }
 
-    }
-  }
-  
-  def now = lock.read {
-    current
-  }
-  
-  def react(f: ReactorTxn => Unit) = transact{
-    implicit txn => {
-      txn.createReaction{f}
-    }
-  }
-  
   private def revise(updated: RevisionDefault) {
     current = updated
     
     //TODO this can be done outside the lock by just passing the new revision to a queue to be
-    //consumed by another thread that actually updated views
+    //consumed by another thread that actually updates views
     views.foreach(_.add(updated))
     autos.foreach(_.add(updated))
-    
-  //    println("updated at " + System.currentTimeMillis())
   }
 
 }
@@ -280,7 +264,31 @@ private class TxnDefault(val shelf: ShelfDefault, val revision: RevisionDefault,
   var boxReactions = revision.boxReactions
   
   var currentReactor: Option[ReactorDefault] = None
-  
+
+  var viewsToAdd = Set[ViewDefault]()
+  var viewsToRemove = Set[View]()
+
+  var autosToAdd = Set[AutoDefault[_]]()
+  var autosToRemove = Set[Auto]()
+
+  def view(f: TxnR => Unit): View = view(f, ShelfDefault.defaultExecutor, true)
+  def view(f: TxnR => Unit, exe: Executor, onlyMostRecent: Boolean): View = {
+    val v = new ViewDefault(shelf, f, exe, onlyMostRecent)
+    viewsToAdd = viewsToAdd + v
+    v
+  }
+
+  def unview(v: View) = viewsToRemove = viewsToRemove + v
+
+  def auto[T](f: Txn => T): Auto = auto(f, ShelfDefault.defaultExecutor, (t:T) => Unit)
+  def auto[T](f: Txn => T, exe: Executor, target: T => Unit): Auto = {
+    val a = new AutoDefault[T](shelf, f, exe, target)
+    autosToAdd = autosToAdd + a
+    a
+  }
+
+  def unauto(a: Auto) = autosToRemove = autosToRemove + a
+
   def beforeCommit() {
     currentReactor.foreach(r=>{
       r.beforeCommit()
@@ -339,7 +347,7 @@ private class TxnDefault(val shelf: ShelfDefault, val revision: RevisionDefault,
     reaction
   }
   
-  def failEarly() = if (shelf.now.conflictsWith(this)) throw new TxnEarlyFailException
+  def failEarly() = if (shelf.currentRevision.conflictsWith(this)) throw new TxnEarlyFailException
   
   override def boxRetainsReaction(box: BoxR[_], r: Reaction) {
     boxReactions = boxReactions.updated(box.id, boxReactions.getOrElse(box.id, Set.empty) + r)

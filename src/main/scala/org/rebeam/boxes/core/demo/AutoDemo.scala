@@ -11,11 +11,11 @@ object AutoDemo {
   def main(args: Array[String]): Unit = {
     val s = ShelfDefault()
 
-    val counter = s.create(0)
-    val slowResult = s.create(0)
-    val uninteresting = s.create(0)
+    val counter = s.now.create(0)
+    val slowResult = s.now.create(0)
+    val uninteresting = s.now.create(0)
     
-    val auto = s.auto{
+    val auto = s.now.auto{
       implicit t: Txn => {
         println("Starting auto")
         Thread.sleep(100)
@@ -23,7 +23,7 @@ object AutoDemo {
       }
     }
     
-    val view = s.view{
+    val view = s.now.view{
       implicit t: TxnR => {
         println("View, counter = " + counter() + ", slowResult = " + slowResult())
       }

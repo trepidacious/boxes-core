@@ -8,14 +8,14 @@ object ReactionDemo {
     val s = ShelfDefault()
 
     println(">Adding a")
-    val a = s.create("a")
+    val a = s.now.create("a")
     println(">Adding b")
-    val b = s.create("b")
+    val b = s.now.create("b")
     println(">Adding c")
-    val c = s.create("")
+    val c = s.now.create("")
     
     println(">Adding reaction")
-    val r = s.react{ 
+    val r = s.now.createReaction{
       implicit txn => {
         print("Changes to '")
         txn.changedSources.foreach(box => print(box() + " "))

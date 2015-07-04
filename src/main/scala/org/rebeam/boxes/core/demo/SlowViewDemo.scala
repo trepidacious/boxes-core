@@ -11,10 +11,10 @@ object SlowViewDemo {
   def main(args: Array[String]): Unit = {
     val s = ShelfDefault()
 
-    val counter = s.create(0)
-    val uninteresting = s.create(0)
+    val counter = s.now.create(0)
+    val uninteresting = s.now.create(0)
     
-    val view = s.view{
+    val view = s.now.view{
       implicit t: TxnR => {
         print("Thinking")
         Range(0, 10).foreach(_ => {

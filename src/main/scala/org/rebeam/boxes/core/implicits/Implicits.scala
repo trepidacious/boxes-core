@@ -13,18 +13,20 @@ object Implicits {
   implicit def closureToPathToBox[T](path : Txn => Box[T])(implicit s: Shelf) = PathToBox.now(path)
 }
 
+//Allow omitting an implicit shelf in e.g. shelf.transact
 object Includes {
-  //Allow omitting an implicit shelf in e.g. shelf.transact
-  def now(implicit shelf: Shelf): Revision = shelf.now
-  def create[T](t: T)(implicit shelf: Shelf): Box[T] = shelf.create(t)
+
+  def currentRevision(implicit shelf: Shelf): Revision = shelf.currentRevision
   def transact[T](f: Txn => T)(implicit shelf: Shelf): T = shelf.transact(f)
   def read[T](f: TxnR => T)(implicit shelf: Shelf): T = shelf.read(f)
   def transactToRevision[T](f: Txn => T)(implicit shelf: Shelf): (T, Revision) = shelf.transactToRevision(f)
-  def react(f: ReactorTxn => Unit)(implicit shelf: Shelf): Reaction = shelf.react(f)
-  def view(f: TxnR => Unit)(implicit shelf: Shelf): View = shelf.view(f)
-  def view(f: TxnR => Unit, exe: Executor, onlyMostRecent: Boolean)(implicit shelf: Shelf): View = shelf.view(f)
-  def auto[T](f: Txn => T)(implicit shelf: Shelf): Auto = shelf.auto(f)
-  def auto[T](f: Txn => T, exe: Executor, target: T => Unit)(implicit shelf: Shelf): Auto = shelf.auto(f, exe, target)
+
+  def createNow[T](t: T)(implicit shelf: Shelf): Box[T] = shelf.now.create(t)
+  def createReactionNow(f: ReactorTxn => Unit)(implicit shelf: Shelf): Reaction = shelf.now.createReaction(f)
+  def viewNow(f: TxnR => Unit)(implicit shelf: Shelf): View = shelf.now.view(f)
+  def viewNow(f: TxnR => Unit, exe: Executor, onlyMostRecent: Boolean)(implicit shelf: Shelf): View = shelf.now.view(f)
+  def autoNow[T](f: Txn => T)(implicit shelf: Shelf): Auto = shelf.now.auto(f)
+  def autoNow[T](f: Txn => T, exe: Executor, target: T => Unit)(implicit shelf: Shelf): Auto = shelf.now.auto(f, exe, target)
 }
 
 class NumericBox[N](v: Box[N])(implicit n: Numeric[N]) {
