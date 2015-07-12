@@ -1,5 +1,7 @@
 package org.rebeam.boxes.core
 
+import org.rebeam.boxes.core.data.ListIndices
+import org.rebeam.boxes.core.reaction.Path
 import org.rebeam.boxes.core.util.ImmediateExecutor
 import org.scalatest.WordSpec
 
@@ -220,339 +222,249 @@ class BoxSpec extends WordSpec {
 
     }
 
+    "throw FailedReactionsException for infinite incrementing reaction" in {
+      //Based on suggestion by MisterD
+      implicit val shelf = ShelfDefault()
+      shelf.transact(implicit txn => {
+        val c = Box(0)
+
+        //This reaction would cycle endlessly, but should throw exception after 10000 applications of the same reaction in one cycle
+        intercept[FailedReactionsException] {
+          txn.createReaction(implicit txn => c() = c() + 1)
+        }
+      })
+    }
   }
-//    "throw FailedReactionsException for infinite incrementing reaction" in {
-//      //Based on suggestion by MisterD
-//
-//      val c = Var(0)
-//
-//      //This reaction would cycle endlessly, but should throw exception after 10000 applications of the same reaction in one cycle
-//      intercept[FailedReactionsException] {
-//        c << c() + 1
-//      }
-//
-//    }
-//
-//
-//
-//  }
-//
-//  "Path" should {
-//    "work for Person" in {
-//
-//      val cate = new Person()
-//      cate.name() = "Cate"
-//      val alice = new Person()
-//      alice.name() = "Alice"
-//      val bob = new Person()
-//      bob.name() = "Bob"
-//      bob.friend() = cate
-//
-//      val bobsFriendsName = Path(bob.friend().name)
-//
-//      assert(bobsFriendsName() === "Cate")
-//
-//      bob.friend() = alice
-//
-//      assert(bobsFriendsName() === "Alice")
-//
-//      //Should see no changes to bobsFriendsName when something not
-//      //in the path changes, even if it is deeply referenced, or used to be part of path, etc.
-//      var changed = false
-//      val v = View{bobsFriendsName(); changed = true}
-//
-//      //Setting up the view leads to it being called
-//      assert(changed === true)
-//
-//      //Now we reset, so we can see if we get a new change
-//      changed = false
-//
-//      cate.name() = "Katey"
-//
-//      //We shouldn't have a change to bobsFriendsName, from changing cate's name
-//      assert(changed === false)
-//
-//      alice.name() = "Alicia"
-//
-//      //NOW we should have a change
-//      assert(changed === true)
-//
-//      assert(bobsFriendsName() === "Alicia")
-//
-//      bobsFriendsName() = "Alucard"
-//
-//      assert(bobsFriendsName() === "Alucard")
-//      assert(alice.name() === "Alucard")
-//
-//    }
-//
-//    "support paths via Options" in {
-//
-//      val cate = new OptionPerson()
-//      cate.name() = "Cate"
-//      val alice = new OptionPerson()
-//      alice.name() = "Alice"
-//      val bob = new OptionPerson()
-//      bob.name() = "Bob"
-//
-//      //Bob may not have a friend - but we can create a path
-//      //through this to make a Var[Option[String]] that will
-//      //contain bob's friend's name when bob has a friend,
-//      //or None otherwise.
-//      val bobsFriendsName = PathViaOption(
-//        for {
-//          friend <- bob.friend()
-//        } yield friend.name
-//      )
-//
-//      //No friend yet
-//      assert(bobsFriendsName() === None)
-//
-//      //Now we have a friend, and so a name
-//      bob.friend() = Some(alice)
-//      assert(bobsFriendsName() === Some("Alice"))
-//
-//      //We can edit the name of Alice using either her own
-//      //name Var, or the path Var
-//      alice.name() = "Alicia"
-//      assert(alice.name() == "Alicia")
-//      assert(bobsFriendsName() === Some("Alicia"))
-//
-//      bobsFriendsName() = Some("Aliss")
-//      assert(alice.name() == "Aliss")
-//      assert(bobsFriendsName() === Some("Aliss"))
-//
-//      //We can reassign bob's friends, and do it all again
-//      bob.friend() = Some(cate)
-//      assert(bobsFriendsName() === Some("Cate"))
-//
-//      cate.name() = "Kate"
-//      assert(cate.name() == "Kate")
-//      assert(bobsFriendsName() === Some("Kate"))
-//      assert(alice.name() == "Aliss")
-//
-//      bobsFriendsName() = Some("Katherine")
-//      assert(cate.name() == "Katherine")
-//      assert(bobsFriendsName() === Some("Katherine"))
-//      assert(alice.name() == "Aliss")
-//
-//      //Setting bobs friends name to None is meaningless, since
-//      //this is only the case when the path is broken (which it is
-//      //not) or cate's name is None (which it cannot be). Therefore
-//      //this is ignored.
-//      bobsFriendsName() = None
-//      assert(cate.name() == "Katherine")
-//      assert(bobsFriendsName() === Some("Katherine"))
-//
-//    }
-//
-//    "support paths to (and via) Options" in {
-//
-//      val cate = new OptionPerson()
-//      cate.name() = "Cate"
-//      val alice = new OptionPerson()
-//      alice.name() = "Alice"
-//      val bob = new OptionPerson()
-//      bob.name() = "Bob"
-//
-//      bob.friend() = Some(alice)
-//
-//      //We can also have a path that goes TO
-//      //a Ref[Option[Something]]. In this case
-//      //it makes no difference whether or not the
-//      //path also goes via an optional element -
-//      //the resulting Path Var will contain None
-//      //whenever the Path fails OR the path succeeds
-//      //but leads to an end Ref that contains None.
-//      val bobsFriendsFriend = PathToOption(
-//        for {
-//          friend <- bob.friend()
-//        } yield friend.friend
-//      )
-//
-//      //Bob has a friend, alice, but she has no friend, so
-//      //there is no "Bob's friend's friend"
-//      assert(bobsFriendsFriend() === None)
-//
-//      //Now we give alice a friend, and complete the path
-//      alice.friend() = Some(cate)
-//      assert(bobsFriendsFriend() === Some(cate))
-//
-//      //But if we break the path early, then we go back to None
-//      bob.friend() = None
-//      assert(bobsFriendsFriend() === None)
-//
-//    }
-//  }
-//
-//  "View" should {
-//    "report only changes from current cycle" in {
-//
-//      val alice = new Person()
-//      alice.name() = "Alice"
-//
-//      var lastChanges:Option[Queue[(Long, SingleChange[String])]] = Some(Queue((1, SingleChangeDefault("MustChange", "MustChange"))))
-//
-//      val v = View{
-//        lastChanges = alice.name.changes
-//      }
-//
-//      //View is called with no changes when it is first set up
-//      assert(lastChanges === None)
-//
-//      alice.name() = "Alicia"
-//
-//      assert(lastChanges != None)
-//      lastChanges.foreach(q => {
-//        assert(q.size === 1)
-//        assert(q.head._2 === SingleChangeDefault("Alice", "Alicia"))
-//      })
-//
-//      alice.name() = "Alucard"
-//
-//      assert(lastChanges != None)
-//      lastChanges.foreach(q => {
-//        assert(q.size === 1)
-//        assert(q.head._2 === SingleChangeDefault("Alicia", "Alucard"))
-//      })
-//    }
-//  }
-//
-//  "ListUtils" should {
-//
-//    "insert a single element" in {
-//      val l = List(1, 2, 3, 4)
-//      assert(ListUtils.insert(l, 0, 42).sameElements(List(42, 1, 2, 3, 4)))
-//      assert(ListUtils.insert(l, 1, 42).sameElements(List(1, 42, 2, 3, 4)))
-//      assert(ListUtils.insert(l, 2, 42).sameElements(List(1, 2, 42, 3, 4)))
-//      assert(ListUtils.insert(l, 3, 42).sameElements(List(1, 2, 3, 42, 4)))
-//      assert(ListUtils.insert(l, 4, 42).sameElements(List(1, 2, 3, 4, 42)))
-//    }
-//
-//    "insert multiple elements" in {
-//      val l = List(1, 2, 3, 4)
-//      assert(ListUtils.insert(l, 0, 42, 43).sameElements(List(42, 43, 1, 2, 3, 4)))
-//      assert(ListUtils.insert(l, 1, 42, 43).sameElements(List(1, 42, 43, 2, 3, 4)))
-//      assert(ListUtils.insert(l, 2, 42, 43).sameElements(List(1, 2, 42, 43, 3, 4)))
-//      assert(ListUtils.insert(l, 3, 42, 43).sameElements(List(1, 2, 3, 42, 43, 4)))
-//      assert(ListUtils.insert(l, 4, 42, 43).sameElements(List(1, 2, 3, 4, 42, 43)))
-//    }
-//
-//    "remove a single element" in {
-//      val l = List(1, 2, 3, 4)
-//      assert(ListUtils.remove(l, 0, 1).sameElements(List(2, 3, 4)))
-//      assert(ListUtils.remove(l, 1, 1).sameElements(List(1, 3, 4)))
-//      assert(ListUtils.remove(l, 2, 1).sameElements(List(1, 2, 4)))
-//      assert(ListUtils.remove(l, 3, 1).sameElements(List(1, 2, 3)))
-//    }
-//
-//    "remove multiple elements" in {
-//      val l = List(1, 2, 3, 4)
-//      assert(ListUtils.remove(l, 0, 2).sameElements(List(3, 4)))
-//      assert(ListUtils.remove(l, 1, 2).sameElements(List(1, 4)))
-//      assert(ListUtils.remove(l, 2, 2).sameElements(List(1, 2)))
-//    }
-//
-//  }
-//
-//  "ListCal" should {
-//    "calculate list of indices" in {
-//      val i = Var(0)
-//      val l = ListCal(Range(0, i()).toList)
-//
-//      assert(l().sameElements(Range(0, 0).toList))
-//
-//      i() = 10
-//      assert(l().sameElements(Range(0, 10).toList))
-//    }
-//
-//    "work with Path" in {
-//      val i = Var(0)
-//      val l = ListCal(Range(0, i()).toList)
-//
-//      assert(l().sameElements(Range(0, 0).toList))
-//
-//      i() = 10
-//      assert(l().sameElements(Range(0, 10).toList))
-//
-//      val v = Var(l)
-//      val p = Path(v)
-//
-//      assert(v()().sameElements(Range(0, 10).toList))
-//      assert(p()().sameElements(Range(0, 10).toList))
-//    }
-//  }
-//
-//  "ListVar" should {
-//    "allow replacement, insertion and removal" in {
-//      val l = ListVar(0, 1, 2, 3)
-//      l(1) = 42
-//      assert(l().sameElements(List(0, 42, 2, 3)))
-//      l.remove(1, 1)
-//      assert(l().sameElements(List(0, 2, 3)))
-//      l.insert(1, 24, 25)
-//      assert(l().sameElements(List(0, 24, 25, 2, 3)))
-//    }
-//
-//    "notify replacement, insertion and removal" in {
-//      val l = ListVar(0, 1, 2, 3)
-//      var changes:Option[Queue[(Long,ListChange[Int])]] = None
-//      val v = View(changes = l.changes)
-//      assert(changes == None)
-//      l(1) = 42
-//      assert(changes != None)
-//      changes.foreach(q => {
-//        assert(q.size === 1)
-//        assert(q.head._2 === ReplacementListChange(List(0, 1, 2, 3), List(0, 42, 2, 3), 1, 1))
-//      })
-//
-//      l.remove(2, 1)
-//      assert(changes != None)
-//      changes.foreach(q => {
-//        assert(q.size === 1)
-//        assert(q.head._2 === RemovalListChange(List(0, 42, 2, 3), List(0, 42, 3), 2, 1))
-//      })
-//
-//      l.insert(3, 24, 25)
-//      assert(changes != None)
-//      changes.foreach(q => {
-//        assert(q.size === 1)
-//        assert(q.head._2 === InsertionListChange(List(0, 42, 3), List(0, 42, 3, 24, 25), 3, 2))
-//      })
-//    }
-//
-//  }
-//
-//  "ListIndices" should {
-//    "track correctly" in {
-//      val l = ListVar(0, 1, 2, 3, 4, 5, 6, 7)
-//      val i = ListIndices(l)
-//
-//      assert(i() === Set(0))
-//
-//      //Can't select past end of list - just selects last element
-//      i() = Set(10)
-//      assert(i() === Set(7))
-//
-//      i() = Set(4)
-//      assert(i() === Set(4))
-//
-//      l(0) = 42
-//      assert(i() === Set(4))
-//
-//      l(0) = 0
-//      assert(i() === Set(4))
-//
-//      l.remove(0, 2)
-//      assert(i() === Set(2))
-//
-//      l.insert(0, 0, 1)
-//      assert(i() === Set(4))
-//
-//      //Completely replace the List with a new one, should reset selection
-//      l() = List(0, 1, 2, 3)
-//      assert(i() === Set(0))
-//    }
+
+  "Path" should {
+    "work for Person" in {
+      implicit val shelf = ShelfDefault()
+      val (alice, bob, cate, bobsFriendsName) = shelf.transact(implicit txn => {
+
+        val cate = Person.default
+        cate.name() = "Cate"
+        val alice = Person.default
+        alice.name() = "Alice"
+        val bob = Person.default
+        bob.name() = "Bob"
+        bob.friend() = Some(cate)
+
+        val bobsFriendsName = Path { implicit txn: Txn => bob.friend().map(_.name) }
+
+        assert(bobsFriendsName() === Some("Cate"))
+
+
+        bob.friend() = Some(alice)
+
+        assert(bobsFriendsName() === Some("Alice"))
+
+        (alice, bob, cate, bobsFriendsName)
+      })
+
+      //Should see no changes to bobsFriendsName when something not
+      //in the path changes, even if it is deeply referenced, or used to be part of path, etc.
+      //Note we execute view immediately in current thread to allow for test
+      var changed = false
+      shelf.now.view(implicit txn => {
+        bobsFriendsName()
+        changed = true
+      }, ImmediateExecutor, false)
+
+      //Setting up the view leads to it being called
+      assert(changed === true)
+
+      //Now we reset, so we can see if we get a new change
+      changed = false
+
+      cate.name.now() = "Katey"
+
+      //We shouldn't have a change to bobsFriendsName, from changing cate's name
+      assert(changed === false)
+
+      alice.name.now() = "Alicia"
+
+      //NOW we should have a change
+      assert(changed === true)
+
+      assert(bobsFriendsName.now() === Some("Alicia"))
+
+      //Now we reset, so we can see if we get a new change
+      changed = false
+
+      //Make a change back through to Alice's name by setting bobsFriendsName
+      bobsFriendsName.now() = Some("Alucard")
+
+      //We should have a change
+      assert(changed === true)
+
+      //And the name should have changed both via the path and for Alice herself
+      assert(bobsFriendsName.now() === Some("Alucard"))
+      assert(alice.name.now() === "Alucard")
+
+      //Setting bob's friend's name to None is meaningless, since
+      //this is only the case when the path is broken (i.e. the path function returns None, which it does
+      //not) or alice's name is None (which it cannot be). Therefore this is ignored.
+      bobsFriendsName.now() = None
+      assert(bobsFriendsName.now() === Some("Alucard"))
+      assert(alice.name.now() === "Alucard")
+
+    }
+
+    "support paths via Options" in {
+
+      implicit val shelf = ShelfDefault()
+      shelf.transact(implicit txn => {
+
+        val cate = Person.default
+        cate.name() = "Cate"
+        val alice = Person.default
+        alice.name() = "Alice"
+        val bob = Person.default
+        bob.name() = "Bob"
+
+        //Bob may not have a friend - but we can create a path
+        //through this to make a Var[Option[String]] that will
+        //contain bob's friend's name when bob has a friend,
+        //or None otherwise.
+        val bobsFriendsName = Path { implicit txn: Txn => bob.friend().map(_.name) }
+
+        //No friend yet
+        assert(bobsFriendsName() === None)
+
+        //Now we have a friend, and so a name
+        bob.friend() = Some(alice)
+        assert(bobsFriendsName() === Some("Alice"))
+
+        //We can edit the name of Alice using either her own
+        //name Var, or the path Var
+        alice.name() = "Alicia"
+        assert(alice.name() == "Alicia")
+        assert(bobsFriendsName() === Some("Alicia"))
+
+        bobsFriendsName() = Some("Aliss")
+        assert(alice.name() == "Aliss")
+        assert(bobsFriendsName() === Some("Aliss"))
+
+        //We can reassign bob's friends, and do it all again
+        bob.friend() = Some(cate)
+        assert(bobsFriendsName() === Some("Cate"))
+
+        cate.name() = "Kate"
+        assert(cate.name() == "Kate")
+        assert(bobsFriendsName() === Some("Kate"))
+        assert(alice.name() == "Aliss")
+
+        bobsFriendsName() = Some("Katherine")
+        assert(cate.name() == "Katherine")
+        assert(bobsFriendsName() === Some("Katherine"))
+        assert(alice.name() == "Aliss")
+
+        //Setting bobs friends name to None is meaningless, since
+        //this is only the case when the path is broken (which it is
+        //not) or cate's name is None (which it cannot be). Therefore
+        //this is ignored.
+        bobsFriendsName() = None
+        assert(cate.name() == "Katherine")
+        assert(bobsFriendsName() === Some("Katherine"))
+      })
+    }
+
+    "support paths to (and via) Options" in {
+      implicit val shelf = ShelfDefault()
+      shelf.transact(implicit txn => {
+        val cate = Person.default
+        cate.name() = "Cate"
+        val alice = Person.default
+        alice.name() = "Alice"
+        val bob = Person.default
+        bob.name() = "Bob"
+
+        bob.friend() = Some(alice)
+
+        //We can also have a path that goes TO
+        //a Ref[Option[Something]]. In this case
+        //it makes no difference whether or not the
+        //path also goes via an optional element -
+        //the resulting Path Var will contain None
+        //whenever the Path fails OR the path succeeds
+        //but leads to an end Ref that contains None.
+        val bobsFriendsFriend = Path { implicit txn: Txn => bob.friend().map(_.friend) }
+
+        //Bob has a friend, alice, but she has no friend, so
+        //there is no "Bob's friend's friend"
+        assert(bobsFriendsFriend() === None)
+
+        //Now we give alice a friend, and complete the path
+        alice.friend() = Some(cate)
+        assert(bobsFriendsFriend() === Some(cate))
+
+        //But if we break the path early, then we go back to None
+        bob.friend() = None
+        assert(bobsFriendsFriend() === None)
+      })
+    }
+  }
+
+  "View" should {
+
+  }
+
+
+  "ListIndices" should {
+
+    "work without selecting all by default" in {
+      implicit val shelf = ShelfDefault()
+      shelf.transact(implicit txn => {
+        val l = Box(List("a", "b", "c", "d", "e", "f", "g", "h"))
+        val i = ListIndices(l, false)
+
+        assert(i.indices() === Set())
+        assert(i.selected() === Set())
+
+        //We can make a selection
+        i.indices() = Set(4)
+        assert(i.indices() === Set(4))
+        assert(i.selected() === Set("e"))
+
+        //Can't select past end of list - just selects default (nothing)
+        i.indices() = Set(10)
+        assert(i.indices() === Set())
+        assert(i.selected() === Set())
+
+        //Messing with the list shouldn't change selection
+        i.indices() = Set(4)
+        l() = "A" :: l().tail
+        assert(i.indices() === Set(4))
+        assert(i.selected() === Set("e"))
+
+        //Removing elements should preserve the selection
+        l() = l().tail.tail
+        assert(i.indices() === Set(2))
+        assert(i.selected() === Set("e"))
+
+        //Adding elements should preserve the selection
+        l() = "X" :: "Y" :: "Z" :: l()
+        assert(i.indices() === Set(5))
+        assert(i.selected() === Set("e"))
+
+        //Removing the selected element should move selection to element at same index in new list
+        l() = List("X", "Y", "Z", "c", "d", "f", "g", "h")
+        assert(i.indices() === Set(5))
+        assert(i.selected() === Set("f"))
+
+        //Shortening list so that index is not in it should move selection to end of list instead
+        l() = List("X", "Y", "Z")
+        assert(i.indices() === Set(2))
+        assert(i.selected() === Set("Z"))
+
+        //Using indices inside and outside the list will retain only those inside it
+        i.indices() = Set(1, 2, 3, 4, 5)
+        assert(i.indices() === Set(1, 2))
+        assert(i.selected() === Set("Y", "Z"))
+
+      })
+    }
+  }
 //
 //    "track correctly with multiple selections" in {
 //      val l = ListVar(0, 1, 2, 3, 4, 5, 6, 7)
