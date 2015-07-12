@@ -1,6 +1,7 @@
 package org.rebeam.boxes.core
 
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.function.Supplier
 
 import org.rebeam.boxes.core.util._
 
@@ -40,7 +41,9 @@ private object BoxDefault {
   def apply[T](): Box[T] = new BoxDefault[T](nextId.getAndIncrement())
 }
 
-private class ReactionDefault(val id: Long) extends Reaction
+private class ReactionDefault(val id: Long) extends Reaction {
+  override def toString = "ReactionDefault(" + id + ")"
+}
 
 private object ReactionDefault {
   private val nextId = new AtomicInteger(0)
@@ -109,6 +112,11 @@ private class RevisionDefault(val index: Long, val map: Map[Long, Change], react
 private class ShelfDefault extends Shelf {
   private val lock = RWLock()
 
+  /**
+   * Track the current transaction in a thread - we must only ever have one transaction active in a thread
+   */
+  private val currentThreadsTransaction: ThreadLocal[Option[TxnDefault]] = ThreadLocal.withInitial(new Supplier[Option[TxnDefault]] { override def get() = None })
+
   private var current = new RevisionDefault(0, Map.empty, Map.empty, BiMultiMap.empty, BiMultiMap.empty, Map.empty)
 
   private val retries = 10000
@@ -119,67 +127,64 @@ private class ShelfDefault extends Shelf {
   private val views = new WeakHashSet[ViewDefault]()
   private val autos = new WeakHashSet[AutoDefault[_]]()
   
-  def read[T](f: TxnR => T): T = f(new TxnRDefault(this, currentRevision))
-
-//
-//  def unview(v: View) = lock.write{
-//    v match {
-//      case vd: ViewDefault => views.remove(vd)
-//      case _ => false
-//    }
-//  }
-//
-//  def auto[T](f: Txn => T) = auto(f, ShelfDefault.defaultExecutor, (t:T) => Unit)
-//
-//  def auto[T](f: Txn => T, exe: Executor = ShelfDefault.defaultExecutor, target: T => Unit = (t: T) => Unit): Auto = {
-//    lock.write {
-//      val auto = new AutoDefault(this, f, exe, target)
-//      autos.add(auto)
-//      auto.add(current)
-//      auto
-//    }
-//  }
-//
-//  def unauto(a: Auto) = lock.write{
-//    a match {
-//      case ad: AutoDefault[_] => autos.remove(ad)
-//      case _ => false
-//    }
-//  }
+  def read[T](f: TxnR => T): T = f(currentThreadsTransaction.get().getOrElse(new TxnRDefault(this, currentRevision)))
 
   def transactFromAuto[T](f: Txn => T): (T, TxnDefault) = {
     def tf(r: RevisionDefault) = new TxnDefault(this, r, ReactionImmediate)
-    val result = transactRepeatedTry(f, tf, retries)
+    val result = transactRepeatedTryOuter(f, tf, retries)
     (result._1, result._2)
   }
 
   def transact[T](f: Txn => T): T = transact(f, ReactionImmediate)
-  
+
   def transact[T](f: Txn => T, p: ReactionPolicy): T = {
     def tf(r: RevisionDefault) = new TxnDefault(this, r, p)
-    transactRepeatedTry(f, tf, retries)._1
+    transactRepeatedTry(f, tf, retries)
   }
 
   def transactToRevision[T](f: Txn => T): (T, Revision) = transactToRevision(f, ReactionImmediate)
     
   def transactToRevision[T](f: Txn => T, p: ReactionPolicy): (T, Revision) = {
     def tf(r: RevisionDefault) = new TxnDefault(this, r, p)
-    val result = transactRepeatedTry(f, tf, retries)
+    val result = transactRepeatedTryOuter(f, tf, retries)
     (result._1, result._3)
   }
 
-  def transactRepeatedTry[T, TT <: TxnDefault](f: Txn => T, tf: RevisionDefault => TT, retries: Int): (T, TT, Revision) = {
-    Range(0, retries).view.map(_ => transactTry(f, tf)).find(o => o.isDefined).flatten.getOrElse(throw new RuntimeException("Transaction failed too many times"))
+  def transactRepeatedTryOuter[T](f: Txn => T, tf: RevisionDefault => TxnDefault, retries: Int): (T, TxnDefault, Revision) = {
+    currentThreadsTransaction.get() match {
+      case None => Range(0, retries).view.map(_ => transactTry(f, tf.apply(currentRevision))).find(o => o.isDefined).flatten.getOrElse(throw new RuntimeException("Transaction failed too many times"))
+      case _ => throw new RuntimeException("Tried to run an outer transaction while nested")
+    }
   }
-  
-  private def transactTry[T, TT <: TxnDefault](f: Txn => T, transFactory: RevisionDefault => TT): Option[(T, TT, Revision)] = {
-    val t = transFactory(currentRevision)
-    val tryR = Try{
+
+  def transactRepeatedTry[T](f: Txn => T, tf: RevisionDefault => TxnDefault, retries: Int): T = {
+    //If we already have a transaction in this thread, just merge into it
+    currentThreadsTransaction.get() match {
+      case Some(oldT) =>
+//        println("==== Reusing transaction " + currentThreadsTransaction.get() + " for thread " + Thread.currentThread())
+        f(oldT)
+
+      case None =>
+        Range(0, retries).view.map(_ => {
+          val newT = tf.apply(currentRevision)
+          currentThreadsTransaction.set(Some(newT))
+//          println(">>>> Created transaction " + currentThreadsTransaction.get() + " for thread " + Thread.currentThread())
+          val result = transactTry(f, newT)
+//          println("<<<< Finished transaction " + currentThreadsTransaction.get() + " for thread " + Thread.currentThread())
+          currentThreadsTransaction.set(None)
+          result.map(_._1)
+        }).find(o => o.isDefined).flatten.getOrElse(throw new RuntimeException("Transaction failed too many times"))
+    }
+  }
+
+  private def transactTry[T](f: Txn => T, t: TxnDefault): Option[(T, TxnDefault, Revision)] = {
+
+    val tryR = Try {
       val r = f(t)
       t.beforeCommit()
       r
     }
-    
+
     //TODO note we could just lock long enough to get the current revision, and build the new map
     //outside the lock, then re-lock to attempt to make the new map the next revision, failing if
     //someone else got there first. This would make the write lock VERY brief, but potentially require
@@ -318,11 +323,13 @@ private class TxnDefault(val shelf: ShelfDefault, val revision: RevisionDefault,
 
 
   def set[T](box: Box[T], t: T): Box[T] = {
+    val different = _get(box) != t
     //If box value would not be changed, skip write
-    if (_get(box) != t) {
+    if (different) {
       writes = writes.updated(box, t)
-      withReactor(_.afterSet(box, t))
     }
+    //Always tell reactor
+    withReactor(_.afterSet(box, t, different))
     box
   }
   

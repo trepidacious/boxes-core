@@ -21,7 +21,14 @@ trait ReactorTxn extends Txn {
  * implementation, but is not part of public API.
  */
 trait ReactorForTxn {
-  def afterSet[T](box: Box[T], t: T): Unit  
+  /**
+   * Must be called after any box has a new value set in the transaction.
+   * @param box The box whose value has been set
+   * @param t The new value for the box
+   * @param differentValue True if the value is different to the old value, false if it is the same and so is ignored.
+   * @tparam T The type ov value in the box
+   */
+  def afterSet[T](box: Box[T], t: T, differentValue: Boolean): Unit
   def afterGet[T](box: BoxR[T]): Unit
   def registerReaction(r: Reaction): Unit
   def beforeCommit(): Unit

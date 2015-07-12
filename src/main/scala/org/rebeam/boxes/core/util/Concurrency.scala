@@ -1,10 +1,8 @@
 package org.rebeam.boxes.core.util
 
 import java.util.concurrent.locks.ReentrantReadWriteLock
-import scala.collection._
 import java.util.concurrent.locks.ReentrantLock
-import java.util.concurrent.ThreadFactory
-import java.util.concurrent.Executors
+import java.util.concurrent.{Executor, ThreadFactory, Executors}
 
 class RWLock() {
   private val lock: ReentrantReadWriteLock = new ReentrantReadWriteLock()
@@ -60,4 +58,8 @@ class DaemonThreadFactory extends ThreadFactory {
 
 object DaemonThreadFactory {
   def apply() = new DaemonThreadFactory()
+}
+
+object ImmediateExecutor extends Executor {
+  override def execute(r: Runnable) = r.run()
 }

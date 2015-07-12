@@ -4,7 +4,7 @@ import java.util.concurrent.Executor
 
 import grizzled.slf4j.Logging
 
-private class ReactorDefault(txn: TxnForReactor, val reactionPolicy: ReactionPolicy, val maximumReactionApplicationsPerCycle: Int = 10000) extends ReactorForTxn with ReactorTxn with Logging {
+private class ReactorDefault(txn: TxnForReactor, val reactionPolicy: ReactionPolicy, val maxCycle: Int = 10000) extends ReactorForTxn with ReactorTxn with Logging {
   
   //For each reaction that has had any source change, maps to the set of boxes that have changed for that reaction. Allows
   //reactions to see why they have been called in any given cycle. Empty outside cycles. Note that from one call to
@@ -26,27 +26,30 @@ private class ReactorDefault(txn: TxnForReactor, val reactionPolicy: ReactionPol
 
   def changedSources = changedSourcesForReaction.get(activeReaction.getOrElse(throw new RuntimeException("No active reaction in call to changedSources - code error"))).getOrElse(Set.empty).toSet
   
-  def afterSet[T](box: Box[T], t: T) {
-    //This box is a target of any active reaction
+  def afterSet[T](box: Box[T], t: T, different: Boolean) {
+
+    //This box is a target of any active reaction, even if it didn't actually change the value
     activeReaction.foreach(r => txn.addTargetForReaction(r, box.id))
-    
-    if (checkingConflicts) {
-      activeReaction match {
-        case Some(r) => {
-          throw new ConflictingReactionException("Conflicting reaction")
-        }
-        case None => {
-          throw new RuntimeException("Conflicting reaction with no active reaction - code error")
+
+    //If the value is different, we check for conflicts, pend reactions and cycle
+    if (different) {
+      if (checkingConflicts) {
+        activeReaction match {
+          case Some(r) => {
+            throw new ConflictingReactionException("Conflicting reaction")
+          }
+          case None => {
+            throw new RuntimeException("Conflicting reaction with no active reaction - code error")
+          }
         }
       }
+
+      //Any reactions on this box are now pending
+      for (reaction <- txn.reactionsSourcingBox(box.id)) pendReaction(reaction, List(box))
+
+      //cycle to apply new reactions
+      cycle()
     }
-
-    //Any reactions on this box are now pending
-    for {
-      reaction <- txn.reactionsSourcingBox(box.id)
-    } pendReaction(reaction, List(box))
-
-    cycle()
   }
   
   def afterGet[T](box: BoxR[T]) {
@@ -105,7 +108,7 @@ private class ReactorDefault(txn: TxnForReactor, val reactionPolicy: ReactionPol
           reactionRespondAndApply(nextReaction)
   
           val applications = reactionApplications.getOrElse(nextReaction, 0)
-          if (applications + 1 > maximumReactionApplicationsPerCycle) {
+          if (applications + 1 > maxCycle) {
             throw new ReactionAppliedTooManyTimesInCycle()
           } else {
             reactionApplications.put(nextReaction, applications + 1)
@@ -167,7 +170,7 @@ private class ReactorDefault(txn: TxnForReactor, val reactionPolicy: ReactionPol
       cycling = false
   
       if (!failedReactions.isEmpty) {
-        logger.debug("Failed Reactions: " + failedReactions)        
+        logger.debug("Failed Reactions: " + failedReactions)
         throw new FailedReactionsException()
       }
     } finally {
