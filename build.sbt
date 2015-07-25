@@ -2,6 +2,8 @@ name := "boxes-core"
 
 version := "0.1-SNAPSHOT"
 
+organization := "org.rebeam"
+
 scalaVersion := "2.11.6"
 
 resolvers ++= Seq(
