@@ -58,10 +58,10 @@ case class ReactionFunc(f: ReactorTxn => Unit) {
 
 private class RevisionDefault(val index: Long, val map: Map[Long, Change], reactionMap: Map[Long, ReactionFunc], val sources: BiMultiMap[Long, Long], val targets: BiMultiMap[Long, Long], val boxReactions: Map[Long, Set[Reaction]]) extends Revision {
 
-  def stateOf[T](box: BoxR[T]): Option[State[T]] = for {
+  def stateOf[T](box: BoxR[T]): Option[BoxState[T]] = for {
     change <- map.get(box.id)
     value <- box.asInstanceOf[BoxDefault[T]].getValue(change)
-  } yield State(change.revision, value)
+  } yield BoxState(change.revision, value)
   
   def indexOf(box: BoxR[_]): Option[Long] = map.get(box.id).map(_.revision)
   

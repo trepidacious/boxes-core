@@ -40,7 +40,7 @@ trait BoxR[+T] extends Identifiable {
   def get()(implicit t: TxnR): T = apply()(t)
   
   def index()(implicit t: TxnR): Long = t.index(this)
-  def state()(implicit t: TxnR): State[T] = t.state(this)
+  def state()(implicit t: TxnR): BoxState[T] = t.state(this)
   def value()(implicit t: TxnR): T = t.value(this)
   
   def retainReaction(r: Reaction)(implicit t: Txn) = t.boxRetainsReaction(this, r)
@@ -99,12 +99,12 @@ object BoxNow {
 
 trait Reaction extends Identifiable
 
-case class State[+T](revision: Long, value: T)
+case class BoxState[+T](revision: Long, value: T)
 
 trait Revision {
   val index: Long
   
-  def stateOf[T](box: BoxR[T]): Option[State[T]]
+  def stateOf[T](box: BoxR[T]): Option[BoxState[T]]
   def indexOf(box: BoxR[_]): Option[Long]
   def valueOf[T](box: BoxR[T]): Option[T]
   
@@ -167,7 +167,7 @@ trait TxnR {
   
   def index(box: BoxR[_]): Long = revision().indexOf(box).getOrElse(throw new RuntimeException("Missing Box"))
   def value[T](box: BoxR[T]): T = get(box)
-  def state[T](box: BoxR[T]): State[T] = revision().stateOf(box).getOrElse(throw new RuntimeException("Missing Box"))
+  def state[T](box: BoxR[T]): BoxState[T] = revision().stateOf(box).getOrElse(throw new RuntimeException("Missing Box"))
 }
 
 trait Txn extends TxnR {
