@@ -2,7 +2,7 @@ package org.rebeam.boxes.core.monad
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import org.rebeam.boxes.core.util.{RWLock, GCWatcher, BiMultiMap}
+import org.rebeam.boxes.core.util.{WeakHashSet, RWLock, GCWatcher, BiMultiMap}
 
 import org.rebeam.boxes.core.Identifiable
 
@@ -28,6 +28,26 @@ class Box[T](val id: Long) extends Identifiable {
   private[core] def getValue(c: BoxChange) = changes.get(c)
 
   override def toString = "Box(id = " + id + ", changes = " + changes + ")"
+
+  /**
+   * Get the value of this box in the context of a State - can be used in for-comprehensions
+   * to get Box value in associated RevisionDelta
+   */
+  def get(): State[RevisionDelta, T] = State(_.get(this))
+
+  /**
+   * Set the value of this box in the context of a State - can be used in for-comprehensions
+   * to set Box value in associated RevisionDelta
+   */
+  def set(t: T): State[RevisionDelta, Box[T]] = State(_.set(this, t))
+
+  def apply(): State[RevisionDelta, T] = get()
+
+  def update(t: T): State[RevisionDelta, Box[T]] = set(t)
+
+  def get(revision: Revision): T = revision.valueOf(this).getOrElse(throw new RuntimeException("Missing Box(" + this.id + ")"))
+  def apply(revision: Revision): T = get(revision)
+
 }
 
 object Box {
@@ -52,7 +72,9 @@ case class RevisionDelta(
                           newReactions: Map[Reaction, State[RevisionDelta, Unit]],
                           sources: BiMultiMap[Long, Long],
                           targets: BiMultiMap[Long, Long],
-                          boxReactions: Map[Long, Set[Reaction]]) {
+                          boxReactions: Map[Long, Set[Reaction]],
+                          observersToAdd: Set[Observer],
+                          observersToRemove: Set[Observer]) {
 
   def create[T](t: T) = {
     val box = Box[T]()
@@ -85,6 +107,14 @@ case class RevisionDelta(
     (this.copy(reads = reads + box.id), v)
   }
 
+  def observe(observer: Observer) = (this.copy(observersToAdd = observersToAdd + observer), observer)
+  def unobserve(observer: Observer) = (this.copy(observersToRemove = observersToRemove + observer), observer)
+
+  /**
+   * Return true if this revision delta does nothing to change the underlying revision (except read it)
+   */
+  def doesNothing = creates.isEmpty && writes.isEmpty && newReactions.isEmpty && boxReactions.isEmpty && observersToAdd.isEmpty && observersToRemove.isEmpty
+
   override def toString = "RevisionDelta(" + base.toString + ")"
 }
 
@@ -99,7 +129,11 @@ object RevisionDelta {
     //Inherit reaction sources and targets, and boxes retaining reactions, from revision
     revision.sources,
     revision.targets,
-    revision.boxReactions)
+    revision.boxReactions,
+    //No observers to add/remove
+    Set.empty,
+    Set.empty
+  )
 }
 
 class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[Long, State[RevisionDelta, Unit]], val sources: BiMultiMap[Long, Long], val targets: BiMultiMap[Long, Long], val boxReactions: Map[Long, Set[Reaction]]) {
@@ -165,23 +199,13 @@ object Shelf {
   private val watcher = new GCWatcher()
   private val reactionWatcher = new GCWatcher()
 
-//  private val views = new WeakHashSet[ViewDefault]()
-//  private val autos = new WeakHashSet[AutoDefault[_]]()
+  private val observers = new WeakHashSet[Observer]()
 
   def currentRevision = lock.read { current }
 
   def currentRevisionDelta = RevisionDelta(currentRevision)
 
   private def createBox[T]() = Box[T]()
-
-  private def revise(updated: Revision) {
-    current = updated
-
-    //TODO this can be done outside the lock by just passing the new revision to a queue to be
-    //consumed by another thread that actually updates views
-//    views.foreach(_.add(updated))
-//    autos.foreach(_.add(updated))
-  }
 
   def run[A](s: State[RevisionDelta, A]): Option[(Revision, A)] = {
     val (delta, a) = s.run(currentRevisionDelta)
@@ -195,30 +219,42 @@ object Shelf {
 
   def commit(delta: RevisionDelta): Option[Revision] = {
     lock.write{
-      if (!current.conflictsWith(delta)) {
-        //Watch new boxes, make new revision with GCed boxes deleted, and make the new updated revision
+      //if the delta does nothing, don't create a new revision, just return the current one
+      if (delta.doesNothing) {
+        Some(current)
+
+      //If delta doesn't conflict, commit it
+      } else if (!current.conflictsWith(delta)) {
+        //Watch new boxes and reactions, make new revision with GCed boxes and reactions deleted, and make the new updated revision
         watcher.watch(delta.creates)
         reactionWatcher.watch(delta.newReactions.keySet)
         val updated = current.updated(delta, watcher.deletes(), reactionWatcher.deletes())
 
-        //Add new views and autos - they will get the update revision as their first revision
-//        for (view <- t.viewsToAdd) views.add(view)
-//        for (auto <- t.autosToAdd) autos.add(auto)
+        //Add new observers - they will get the update revision as their first revision
+        for (obs <- delta.observersToAdd) observers.add(obs)
 
-        //TODO there must be a neater way to handle the View/ViewDefault thing - maybe View should have an add method,
-        //but then ViewDefault would have to accept Revision not RevisionDefault
-        //Remove unwanted views and autos - they will not see this new revision
-//        for (view <- t.viewsToRemove) view match {case v: ViewDefault => views.remove(v)}
-//        for (auto <- t.autosToRemove) auto match {case a: AutoDefault[_] => autos.remove(a)}
+        //Remove unwanted observers - they will not see this new revision
+        for (obs <- delta.observersToRemove) observers.remove(obs)
 
         //Move to the new revision
-        revise(updated)
+        current = updated
+
+        //TODO we could do this outside lock. We would want to ensure that observers still receive revisions in strict
+        //order.
+        //Notify observers.
+        observers.foreach(_.observe(updated))
 
         //Return the new revision
         Some(updated)
+
+      //Delta conflicts, do nothing and return no new revision
       } else {
         None
       }
     }
   }
+}
+
+trait Observer {
+  def observe(r: Revision): Unit
 }
