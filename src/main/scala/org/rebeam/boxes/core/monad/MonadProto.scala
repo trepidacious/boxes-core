@@ -64,6 +64,15 @@ object Reaction {
   def apply(): Reaction = Reaction(nextId.getAndIncrement())
 }
 
+sealed trait BoxDelta
+
+case class CreateBox[T](box: Box[T]) extends BoxDelta
+case class ReadBox[T](box: Box[T]) extends BoxDelta
+case class WriteBox[T](box: Box[T], t: T) extends BoxDelta
+case class CreateReaction(reaction: Reaction, action: State[RevisionDelta, Unit]) extends BoxDelta
+case class Observe(observer: Observer) extends BoxDelta
+case class Unobserve(observer: Observer) extends BoxDelta
+
 case class RevisionDelta(
                           base: Revision,
                           creates: Set[Box[_]],
