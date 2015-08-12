@@ -1,8 +1,9 @@
 package org.rebeam.boxes.core.monad
 
+import scalaz.Monoid
+
 object Delta {
-  def delta[A, D <: A => A, B](f: A => (List[D], B)) = new Delta(f)
-  def applyDeltas[A, D <: A => A](a: A, d: List[D]) = d.foldLeft(a)((a, d) => d.apply(a))
+  def delta[A, D <: A => A: Monoid, B](f: A => (D, B)) = new Delta(f)
 }
 
 /**
@@ -13,20 +14,20 @@ object Delta {
  * @tparam D  Type of delta that can be applied to the state, which must be a function A => A
  * @tparam B  Type of result produced
  */
-class Delta[A, D <: A => A, B](f: A => (List[D], B)) {
+class Delta[A, D <: A => A: Monoid, B](f: A => (D, B)) {
 
   def apply(a: A) = f(a)
 
   def map[C](g: B => C): Delta[A, D, C] = new Delta[A, D, C]({ a =>
-    val (deltas, b) = f(a)
-    (deltas, g(b))
+    val (d, b) = f(a)
+    (d, g(b))
   })
 
   def flatMap[C](g: B => Delta[A, D, C]): Delta[A, D, C] = new Delta[A, D, C]({ a =>
     val (d1, b) = f(a)
-    val a2 = Delta.applyDeltas(a, d1)
+    val a2 = d1.apply(a)
     val (d2, c) = g(b).apply(a2)
-    (d1 ++ d2, c)
+    (implicitly[Monoid[D]].append(d1, d2), c)
   })
 
 }
@@ -52,9 +53,18 @@ object DeltaApp extends App {
     override def toString = "MapClear()"
   }
 
-  def put(key: String, value: String) = delta[M, MapDelta, Unit]((m: M) => (List(MapPut(key, value)), ()))
-  def apply(key: String) = delta[M, MapDelta, String]((m: M) => (List(MapApply(key)), m.apply(key)))
-  def clear() = delta[M, MapDelta, Unit]((m: M) => (List(MapClear()), ()))
+  case class MapDeltas(deltas: Vector[MapDelta]) extends Function1[M, M] {
+    def apply(m: M) = deltas.foldLeft(m)((m, d) => d.apply(m))
+    override def toString = "MapDeltas(" + deltas + ")"
+  }
+
+  def mapDeltasAppend(m1: MapDeltas, m2: => MapDeltas) = MapDeltas(m1.deltas ++ m2.deltas)
+
+  implicit val MapDeltasMonoid = Monoid.instance(mapDeltasAppend, MapDeltas(Vector.empty))
+
+  def put(key: String, value: String) = delta[M, MapDeltas, Unit]((m: M) => (MapDeltas(Vector(MapPut(key, value))), ()))
+  def apply(key: String) = delta[M, MapDeltas, String]((m: M) => (MapDeltas(Vector(MapApply(key))), m.apply(key)))
+  def clear() = delta[M, MapDeltas, Unit]((m: M) => (MapDeltas(Vector(MapClear())), ()))
 
   val map: Map[String, String] = Map.empty
 
@@ -67,8 +77,8 @@ object DeltaApp extends App {
 
   val initialMap: M = Map.empty
   val (deltas, result) = x.apply(initialMap)
-  val finalMap = applyDeltas(initialMap, deltas)
+  val finalMap = deltas.apply(initialMap)
 
-  println("Initial map " + initialMap + ", applied deltas " + deltas + ", final map " + finalMap)
+  println("Initial map " + initialMap + ", applied deltas " + deltas + ", final map " + finalMap + ", result " + result)
 
 }
