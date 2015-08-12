@@ -2,7 +2,7 @@ package org.rebeam.boxes.core.monad
 
 import ShelfActions._
 
-object MonadProtoApp extends App {
+object RevisionApp extends App {
 
   def createName(s: String) = for {
     name <- create(s)
