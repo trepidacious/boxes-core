@@ -1,47 +1,61 @@
 package org.rebeam.boxes.core.free
 
-import scalaz.{\/-, -\/}
+import org.rebeam.boxes.core.free.ShelfActions._
 
 object RevisionApp extends App {
 
   import BoxDeltaF._
+//
+//  def makeAValue[T](): T = null.asInstanceOf[T]
+//
+//  val script: BoxScript[Box[String]] = //Free[BoxDeltaF, Box[String]] =
+//    for {
+//      b <- create("bob")
+//      c <- create("cate")
+//      x <- get(b)
+//      _ <- set(c, x)
+//    } yield b
+//
+//  println(printScript(script, ""))
+//  println(script)
 
-  def makeAValue[T](): T = null.asInstanceOf[T]
+  def createName(s: String) = for {
+    name <- create(s)
+  } yield name
 
-  def printScript[T](script: BoxScript[T], output: String) = printScriptLoop[T](script, output)
+  val name: Box[String] = atomic{createName("bob")}
 
-  def printScriptLoop[T](script: BoxScript[_], output: String): (String, T) = script.resume match {
+  val getName = for {
+    bobName <- name()
+  } yield bobName
 
-    case -\/(CreateBoxDeltaF(t, toNext)) => printScriptLoop(toNext(null), output + " " + "CreateBox(" + t + ")")
-    case -\/(ReadBoxDeltaF(b, toNext)) => printScriptLoop(toNext(null), output + " " + "ReadBox(" + b + ")")
+  println(atomic{getName})
 
-    case -\/(WriteBoxDeltaF(b, t, next)) => printScriptLoop(next, output + " " + "WriteBox(" + b + ", " + t + ")")
-    case -\/(ObserveDeltaF(o, next)) => printScriptLoop(next, output + " " + "Observe(" + o + ")")
-    case -\/(UnobserveDeltaF(o, next)) => printScriptLoop(next, output + " " + "Unobserve(" + o + ")")
+  val o = new Observer {
+    //We have a revision, so we can just use this to retrieve data via box.apply(revision)
+    //    override def observe(r: Revision): Unit = println("Observed name as " + name(r) + " in " + r)
 
-    case \/-(x) => (output + " Return(" + x + ")", x.asInstanceOf[T])
-
-    case _ => throw new RuntimeException("Invalid!")
+    //Observer could also execute a new atomic - be careful to avoid loops, atomics must eventually stop
+    //being called in response to changes. Ideally an atomic like this should only make changes once, and then
+    //when run again should detect that boxes are already in desired state. Using an atomic that only reads state
+    //is always acceptable.
+    //Note that in this case we are running the atomic on the CURRENT revision at the time, not necessarily
+    //the same revision observe is called with
+    override def observe(r: Revision): Unit = println("Observed name as " + atomic{getName})
   }
 
-//  case class CreateBoxDeltaF[Next, T](t: T, toNext: Box[T] => Next) extends BoxDeltaF[Next]
-//  case class ReadBoxDeltaF[Next, T](b: Box[T], toNext: T => Next) extends BoxDeltaF[Next]
-//
-//  case class WriteBoxDeltaF[Next, T](b: Box[T], t: T, next: Next) extends BoxDeltaF[Next]
-//  //case class CreateReactionDeltaF[Next, T](b: Box[T], t: T, next: Next) extends BoxDeltaF[Next]
-//  case class ObserveDeltaF[Next, T](observer: Observer, next: Next) extends BoxDeltaF[Next]
-//  case class UnobserveDeltaF[Next, T](observer: Observer, next: Next) extends BoxDeltaF[Next]
-
-
-  val script: BoxScript[Box[String]] = //Free[BoxDeltaF, Box[String]] =
+  //Register the observer
+  atomic{
     for {
-      b <- create("bob")
-      c <- create("cate")
-      x <- get(b)
-      _ <- set(c, x)
-    } yield b
+      _ <- observe(o)
+    } yield ()
+  }
 
-  println(printScript(script, ""))
-//  println(script)
+  //Make a change so we can observe it
+  atomic{
+    for {
+      _ <- name() = "bobobobob"
+    } yield ()
+  }
 
 }

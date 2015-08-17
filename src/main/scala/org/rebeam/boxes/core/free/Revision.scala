@@ -10,48 +10,12 @@ import scalaz._
 import Scalaz._
 import Free._
 
-object BoxDeltasMonad {
-  def boxDeltasMonad[A](f: RevisionAndDeltas => (BoxDeltas, A)) = new BoxDeltasMonad(f)
-}
-
-import org.rebeam.boxes.core.free.BoxDeltasMonad._
-
-/**
- * A monad allowing a list of BoxDeltas to be built by flatMapping functions
- * that read a RevisionAndDeltas and produce a new BoxDeltas to be applied
- * to the RevisionAndDeltas, plus a result. This is very similar to State[RevisionAndDeltas, A],
- * but instead of allowing new RevisionAndDeltas to be returned directly, we require that
- * a BoxDeltas is returned instead, and the monad itself will apply these deltas. This
- * means that only valid updates to RevisionAndDeltas are allowed, and also allows us to
- * build the deltas to the state rather than just the final state.
- */
-class BoxDeltasMonad[A](f: RevisionAndDeltas => (BoxDeltas, A)) {
-
-  def apply(rad: RevisionAndDeltas) = f(rad)
-
-  def map[B](g: A => B): BoxDeltasMonad[B] = new BoxDeltasMonad[B]({ rad =>
-    val (d, a) = f(rad)
-    (d, g(a))
-  })
-
-  def flatMap[B](g: A => BoxDeltasMonad[B]): BoxDeltasMonad[B] = new BoxDeltasMonad[B]({ rad1 =>
-    val (d1, a) = f(rad1)
-    //rad2 is the RevisionAndDeltas after appending the new deltas from THIS monad to the incoming RevisionAndDeltas,
-    //and will be provided to the new BoxDeltasMonad we are flatMapping
-    val rad2 = rad1.appendDeltas(d1)
-    val (d2, b) = g(a).apply(rad2)
-    //The combined monad will apply deltas from this monad, and the new one
-    (d1.append(d2), b)
-  })
-
-}
-
-
-
-
 case class BoxChange(revision: Long)
 
+import BoxDeltaF.BoxScript
+
 class Box[T](val id: Long) extends Identifiable {
+
   /**
    * Store changes to this box, as a map from the Change to the State that was
    * set by that Change. Changes that form a revision are retained by RevisionMonad
@@ -69,18 +33,18 @@ class Box[T](val id: Long) extends Identifiable {
 
   override def toString = "Box(" + id + ")"
 
-  /** Get the value of this box in the context of a BoxDeltasMonad - can be used in for-comprehensions */
-  def get(): BoxDeltasMonad[T] = boxDeltasMonad(_.get(this))
+  /** Get the value of this box in the context of a BoxScript - can be used in for-comprehensions */
+  def get() = BoxDeltaF.get(this)
 
   /**
    * Set the value of this box in the context of a State - can be used in for-comprehensions
    * to set Box value in associated RevisionDelta
    */
-  def set(t: T): BoxDeltasMonad[Box[T]] = boxDeltasMonad(_.set(this, t))
+  def set(t: T) = BoxDeltaF.set(this, t)
 
-  def apply(): BoxDeltasMonad[T] = get()
+  def apply() = get()
 
-  def update(t: T): BoxDeltasMonad[Box[T]] = set(t)
+  def update(t: T) = set(t)
 
   def get(revision: Revision): T = revision.valueOf(this).getOrElse(throw new RuntimeException("Missing Box(" + this.id + ")"))
   def apply(revision: Revision): T = get(revision)
@@ -121,11 +85,11 @@ case class ReadBox[T](box: Box[T]) extends BoxDelta1[T]
 
 //BoxDelta0 cases
 case class WriteBox[T](box: Box[T], t: T) extends BoxDelta0
-case class CreateReaction(reaction: Reaction, action: BoxDeltasMonad[Unit]) extends BoxDelta0
+case class CreateReaction(reaction: Reaction, action: BoxScript[Unit]) extends BoxDelta0
 case class Observe(observer: Observer) extends BoxDelta0
 case class Unobserve(observer: Observer) extends BoxDelta0
-case class UpdateReactionGraph(sources: BiMultiMap[Long, Long],
-                               targets: BiMultiMap[Long, Long]) extends BoxDelta0
+//case class UpdateReactionGraph(sources: BiMultiMap[Long, Long],
+//                               targets: BiMultiMap[Long, Long]) extends BoxDelta0
 
 //A Functor based on BoxDeltas
 sealed trait BoxDeltaF[+Next]
@@ -259,7 +223,7 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
   override def toString = "RevisionAndDeltas(" + revision.toString + "," + deltas + ")"
 }
 
-class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[Long, BoxDeltasMonad[Unit]], val sources: BiMultiMap[Long, Long], val targets: BiMultiMap[Long, Long], val boxReactions: Map[Long, Set[Reaction]]) {
+class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[Long, BoxScript[Unit]], val sources: BiMultiMap[Long, Long], val targets: BiMultiMap[Long, Long], val boxReactions: Map[Long, Set[Reaction]]) {
 
   def stateOf[T](box: Box[T]): Option[BoxState[T]] = for {
     change <- map.get(box.id)
@@ -344,16 +308,49 @@ object Shelf {
 
   private def createBox[T]() = Box[T]()
 
-  def run[A](s: BoxDeltasMonad[A]): Option[(Revision, A)] = {
-    val baseRevision = currentRevision
-    val (deltas, a) = s.apply(RevisionAndDeltas(baseRevision, BoxDeltas.empty))
-    commit(RevisionAndDeltas(baseRevision, deltas)).map((_, a))
+  def runScript[A](script: BoxScript[A], rad: RevisionAndDeltas) = runScriptInner[A](script, rad)
+
+  private final def runScriptInner[A](script: BoxScript[_], rad: RevisionAndDeltas): (RevisionAndDeltas, A) = script.resume match {
+
+    case -\/(CreateBoxDeltaF(t, toNext)) =>
+      val (deltas, box) = rad.create(t)
+      val n = toNext(box)
+      runScriptInner(n, rad.appendDeltas(deltas))
+
+    case -\/(ReadBoxDeltaF(b, toNext)) =>
+      val (deltas, value) = rad.get(b)
+      val n = toNext(value)
+      runScriptInner(n, rad.appendDeltas(deltas))
+
+    case -\/(WriteBoxDeltaF(b, t, next)) =>
+      val (deltas, box) = rad.set(b, t)
+      runScriptInner(next, rad.appendDeltas(deltas))
+
+    case -\/(ObserveDeltaF(obs, next)) =>
+      val (deltas, _) = rad.observe(obs)
+      runScriptInner(next, rad.appendDeltas(deltas))
+
+    case -\/(UnobserveDeltaF(obs, next)) =>
+      val (deltas, _) = rad.unobserve(obs)
+      runScriptInner(next, rad.appendDeltas(deltas))
+
+    case \/-(x) => (rad, x.asInstanceOf[A])
   }
 
-  def runRepeated[A](s: BoxDeltasMonad[A]): (Revision, A) =
+  def run[A](s: BoxScript[A]): Option[(Revision, A)] = {
+    val baseRevision = currentRevision
+
+    val baseRad = RevisionAndDeltas(baseRevision, BoxDeltas.empty)
+
+    val (finalRad, result) = runScript(s, baseRad)
+
+    commit(RevisionAndDeltas(baseRevision, finalRad.deltas)).map((_, result))
+  }
+
+  def runRepeated[A](s: BoxScript[A]): (Revision, A) =
     Range(0, retries).view.map(_ => run(s)).find(o => o.isDefined).flatten.getOrElse(throw new RuntimeException("Transaction failed too many times"))
 
-  def atomic[A](s: BoxDeltasMonad[A]): A = runRepeated(s)._2
+  def atomic[A](s: BoxScript[A]): A = runRepeated(s)._2
 
   def commit(rad: RevisionAndDeltas): Option[Revision] = {
     lock.write{
