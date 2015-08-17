@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import org.rebeam.boxes.core.Identifiable
 import org.rebeam.boxes.core.util.{BiMultiMap, GCWatcher, RWLock, WeakHashSet}
 
+import scala.annotation.tailrec
 import scala.collection.immutable._
 import scalaz._
 import Scalaz._
@@ -69,25 +70,14 @@ object Reaction {
 //an udpated Revision. These are the valid operations of a "transaction".
 sealed trait BoxDelta
 
-//BoxDelta0 instances write state and "return" Unit
-sealed trait BoxDelta0 extends BoxDelta
-
-//BoxDelta1 instances read/write state and "return" T
-sealed trait BoxDelta1[T] extends BoxDelta
-
-//BoxDelta1 cases
-
 /** Create and return a new Box[T] */
-case class CreateBox[T](box: Box[T]) extends BoxDelta1[Box[T]]
-
+case class CreateBox[T](box: Box[T]) extends BoxDelta
 /** Read and return contents of a Box[T] */
-case class ReadBox[T](box: Box[T]) extends BoxDelta1[T]
-
-//BoxDelta0 cases
-case class WriteBox[T](box: Box[T], t: T) extends BoxDelta0
-case class CreateReaction(reaction: Reaction, action: BoxScript[Unit]) extends BoxDelta0
-case class Observe(observer: Observer) extends BoxDelta0
-case class Unobserve(observer: Observer) extends BoxDelta0
+case class ReadBox[T](box: Box[T]) extends BoxDelta
+case class WriteBox[T](box: Box[T], t: T) extends BoxDelta
+case class CreateReaction(reaction: Reaction, action: BoxScript[Unit]) extends BoxDelta
+case class Observe(observer: Observer) extends BoxDelta
+case class Unobserve(observer: Observer) extends BoxDelta
 //case class UpdateReactionGraph(sources: BiMultiMap[Long, Long],
 //                               targets: BiMultiMap[Long, Long]) extends BoxDelta0
 
@@ -126,7 +116,7 @@ object BoxDeltaF {
   def createReaction(action: BoxScript[Unit]) = liftF(CreateReactionDeltaF(action, identity: Reaction => Reaction))
 }
 
-/** A sequence of BoxDelta instances in order, plus append and a potentially faster way of finding the most recent write on a given box */
+/** A sequence of BoxDelta instances in order applied, plus append and a potentially faster way of finding the most recent write on a given box */
 trait BoxDeltas {
   def deltas: Vector[BoxDelta]
 
@@ -164,10 +154,10 @@ private class BoxDeltasCachedWrites(val deltas: Vector[BoxDelta], writes: Map[Bo
 
   def boxWrite[T](box: Box[T]): Option[T] = writes.get(box.asInstanceOf[Box[Any]]).asInstanceOf[Option[T]]
 
-  def altersRevision: Boolean = deltas.find(delta => delta match {
+  def altersRevision: Boolean = deltas.exists{
     case ReadBox(_) => false
     case _ => true
-  }).isDefined
+  }
 
   override def toString = "BoxDeltasCachedWrites(" + deltas + ", " + writes + ")";
 }
@@ -225,6 +215,42 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
 
   /** Create a new RevisionAndDeltas with same revision, but with new deltas appended to our own */
   def appendDeltas(d: BoxDeltas) = RevisionAndDeltas(revision, deltas.append(d))
+
+  /** Run a script and append the deltas it generates, creating a new RevisionAndDeltas and a script result */
+  def appendScript[A](script: BoxScript[A]) = appendScriptInner[A](script, this)
+
+  //FIXME this is not tail recursive - either make it so, or replace it with an imperative loop, make sure this doesn't leak
+  private final def appendScriptInner[A](script: BoxScript[_], rad: RevisionAndDeltas): (RevisionAndDeltas, A) = script.resume match {
+
+    case -\/(CreateBoxDeltaF(t, toNext)) =>
+      val (deltas, box) = rad.create(t)
+      val n = toNext(box)
+      appendScriptInner(n, rad.appendDeltas(deltas))
+
+    case -\/(ReadBoxDeltaF(b, toNext)) =>
+      val (deltas, value) = rad.get(b)
+      val n = toNext(value)
+      appendScriptInner(n, rad.appendDeltas(deltas))
+
+    case -\/(WriteBoxDeltaF(b, t, next)) =>
+      val (deltas, box) = rad.set(b, t)
+      appendScriptInner(next, rad.appendDeltas(deltas))
+
+    case -\/(CreateReactionDeltaF(action, next)) =>
+      val (deltas, reaction) = rad.createReaction(action)
+      val n = next(reaction)
+      appendScriptInner(n, rad.appendDeltas(deltas))
+
+    case -\/(ObserveDeltaF(obs, next)) =>
+      val (deltas, _) = rad.observe(obs)
+      appendScriptInner(next, rad.appendDeltas(deltas))
+
+    case -\/(UnobserveDeltaF(obs, next)) =>
+      val (deltas, _) = rad.unobserve(obs)
+      appendScriptInner(next, rad.appendDeltas(deltas))
+
+    case \/-(x) => (rad, x.asInstanceOf[A])
+  }
 
   override def toString = "RevisionAndDeltas(" + revision.toString + "," + deltas + ")"
 }
@@ -312,49 +338,12 @@ object Shelf {
 
   def currentRevision = lock.read { current }
 
-  private def createBox[T]() = Box[T]()
-
-  def runScript[A](script: BoxScript[A], rad: RevisionAndDeltas) = runScriptInner[A](script, rad)
-
-  //FIXME this is not tail recursive - either make it so, or replace it with an imperative loop, make sure this doesn't leak
-  private final def runScriptInner[A](script: BoxScript[_], rad: RevisionAndDeltas): (RevisionAndDeltas, A) = script.resume match {
-
-    case -\/(CreateBoxDeltaF(t, toNext)) =>
-      val (deltas, box) = rad.create(t)
-      val n = toNext(box)
-      runScriptInner(n, rad.appendDeltas(deltas))
-
-    case -\/(ReadBoxDeltaF(b, toNext)) =>
-      val (deltas, value) = rad.get(b)
-      val n = toNext(value)
-      runScriptInner(n, rad.appendDeltas(deltas))
-
-    case -\/(WriteBoxDeltaF(b, t, next)) =>
-      val (deltas, box) = rad.set(b, t)
-      runScriptInner(next, rad.appendDeltas(deltas))
-
-    case -\/(CreateReactionDeltaF(action, next)) =>
-      val (deltas, reaction) = rad.createReaction(action)
-      val n = next(reaction)
-      runScriptInner(n, rad.appendDeltas(deltas))
-
-    case -\/(ObserveDeltaF(obs, next)) =>
-      val (deltas, _) = rad.observe(obs)
-      runScriptInner(next, rad.appendDeltas(deltas))
-
-    case -\/(UnobserveDeltaF(obs, next)) =>
-      val (deltas, _) = rad.unobserve(obs)
-      runScriptInner(next, rad.appendDeltas(deltas))
-
-    case \/-(x) => (rad, x.asInstanceOf[A])
-  }
-
   def run[A](s: BoxScript[A]): Option[(Revision, A)] = {
     val baseRevision = currentRevision
 
     val baseRad = RevisionAndDeltas(baseRevision, BoxDeltas.empty)
 
-    val (finalRad, result) = runScript(s, baseRad)
+    val (finalRad, result) = baseRad.appendScript(s)
 
     commit(RevisionAndDeltas(baseRevision, finalRad.deltas)).map((_, result))
   }
