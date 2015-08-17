@@ -17,12 +17,11 @@ import scala.collection.mutable
 
 // 1. ADT
 
-case class Key[T](s: String)
 
 sealed trait KVS[+Next]
-case class Put[Next, T](key: Key[T], value: T, next: Next) extends KVS[Next]     // <----  def put(key: String, value: String): Unit
-case class Get[Next, T](key: Key[T], onResult: T => Next) extends KVS[Next]      // <----  def get(key: String): String
-case class Delete[Next](key: Key[_], next: Next) extends KVS[Next]                 // <----  def delete(key: String): Unit
+case class Put[Next](key: String, value: String, next: Next) extends KVS[Next]     // <----  def put(key: String, value: String): Unit
+case class Get[Next](key: String, onResult: String => Next) extends KVS[Next]      // <----  def get(key: String): String
+case class Delete[Next](key: String, next: Next) extends KVS[Next]                 // <----  def delete(key: String): Unit
 
 object KVS {
   type Script[A] = Free[KVS, A]

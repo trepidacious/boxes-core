@@ -8,9 +8,19 @@ object RevisionApp extends App {
 
   def makeAValue[T](): T = null.asInstanceOf[T]
 
-  def printScript(script: BoxScript[_], output: String): (String, Any) = script.resume match {
-    case -\/(CreateBoxDeltaF(t, toNext)) => printScript(toNext(null).asInstanceOf[BoxScript[Unit]], output + " " + "CreateBox(" + t + ")")
-    case \/-(x) => (output + " Return(" + x + ")", x)
+  def printScript[T](script: BoxScript[T], output: String) = printScriptLoop[T](script, output)
+
+  def printScriptLoop[T](script: BoxScript[_], output: String): (String, T) = script.resume match {
+
+    case -\/(CreateBoxDeltaF(t, toNext)) => printScriptLoop(toNext(null), output + " " + "CreateBox(" + t + ")")
+    case -\/(ReadBoxDeltaF(b, toNext)) => printScriptLoop(toNext(null), output + " " + "ReadBox(" + b + ")")
+
+    case -\/(WriteBoxDeltaF(b, t, next)) => printScriptLoop(next, output + " " + "WriteBox(" + b + ", " + t + ")")
+    case -\/(ObserveDeltaF(o, next)) => printScriptLoop(next, output + " " + "Observe(" + o + ")")
+    case -\/(UnobserveDeltaF(o, next)) => printScriptLoop(next, output + " " + "Unobserve(" + o + ")")
+
+    case \/-(x) => (output + " Return(" + x + ")", x.asInstanceOf[T])
+
     case _ => throw new RuntimeException("Invalid!")
   }
 
@@ -22,10 +32,16 @@ object RevisionApp extends App {
 //  case class ObserveDeltaF[Next, T](observer: Observer, next: Next) extends BoxDeltaF[Next]
 //  case class UnobserveDeltaF[Next, T](observer: Observer, next: Next) extends BoxDeltaF[Next]
 
-  val createBob = for {
-    b <- create("bob")
-  } yield b
 
-  println(printScript(createBob, ""))
+  val script: BoxScript[Box[String]] = //Free[BoxDeltaF, Box[String]] =
+    for {
+      b <- create("bob")
+      c <- create("cate")
+      x <- get(b)
+      _ <- set(c, x)
+    } yield b
+
+  println(printScript(script, ""))
+//  println(script)
 
 }
