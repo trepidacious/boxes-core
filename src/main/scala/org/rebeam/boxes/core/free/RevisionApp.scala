@@ -5,19 +5,6 @@ import org.rebeam.boxes.core.free.ShelfActions._
 object RevisionApp extends App {
 
   import BoxDeltaF._
-//
-//  def makeAValue[T](): T = null.asInstanceOf[T]
-//
-//  val script: BoxScript[Box[String]] = //Free[BoxDeltaF, Box[String]] =
-//    for {
-//      b <- create("bob")
-//      c <- create("cate")
-//      x <- get(b)
-//      _ <- set(c, x)
-//    } yield b
-//
-//  println(printScript(script, ""))
-//  println(script)
 
   def createName(s: String) = for {
     name <- create(s)
