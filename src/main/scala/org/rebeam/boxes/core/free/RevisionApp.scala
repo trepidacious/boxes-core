@@ -1,6 +1,6 @@
 package org.rebeam.boxes.core.free
 
-import org.rebeam.boxes.core.free.ShelfActions._
+import org.rebeam.boxes.core.free.BoxUtils._
 
 object RevisionApp extends App {
 

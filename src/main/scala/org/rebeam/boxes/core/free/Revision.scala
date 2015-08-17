@@ -12,7 +12,7 @@ import Free._
 
 case class BoxChange(revision: Long)
 
-import BoxDeltaF.BoxScript
+import BoxTypes._
 
 class Box[T](val id: Long) extends Identifiable {
 
@@ -91,26 +91,26 @@ case class Unobserve(observer: Observer) extends BoxDelta0
 //case class UpdateReactionGraph(sources: BiMultiMap[Long, Long],
 //                               targets: BiMultiMap[Long, Long]) extends BoxDelta0
 
-//A Functor based on BoxDeltas
+
+//A Functor based on BoxDeltas that is suitable for use with Free
 sealed trait BoxDeltaF[+Next]
 case class CreateBoxDeltaF[Next, T](t: T, toNext: Box[T] => Next) extends BoxDeltaF[Next]
 case class ReadBoxDeltaF[Next, T](b: Box[T], toNext: T => Next) extends BoxDeltaF[Next]
 
 case class WriteBoxDeltaF[Next, T](b: Box[T], t: T, next: Next) extends BoxDeltaF[Next]
-//case class CreateReactionDeltaF[Next, T](b: Box[T], t: T, next: Next) extends BoxDeltaF[Next]
+case class CreateReactionDeltaF[Next, T](action: BoxScript[Unit], toNext: Reaction => Next) extends BoxDeltaF[Next]
 case class ObserveDeltaF[Next, T](observer: Observer, next: Next) extends BoxDeltaF[Next]
 case class UnobserveDeltaF[Next, T](observer: Observer, next: Next) extends BoxDeltaF[Next]
 //case class UpdateReactionGraphDeltaF[Next, T](b: Box[T], t: T, next: Next) extends BoxDeltaF[Next]
 
 object BoxDeltaF {
 
-  type BoxScript[A] = Free[BoxDeltaF, A]
-
   implicit val functor: Functor[BoxDeltaF] = new Functor[BoxDeltaF] {
     override def map[A, B](bdf: BoxDeltaF[A])(f: (A) => B): BoxDeltaF[B] = bdf match {
       case CreateBoxDeltaF(t, toNext) => CreateBoxDeltaF(t, toNext andThen f) //toNext returns the next Free when called with t:T,
                                                                               //then we call f on this next Free to sequence it after
       case ReadBoxDeltaF(b, toNext) => ReadBoxDeltaF(b, toNext andThen f)
+      case CreateReactionDeltaF(action, toNext) => CreateReactionDeltaF(action, toNext andThen f)
 
       case WriteBoxDeltaF(b, t, next) => WriteBoxDeltaF(b, t, f(next))        //Call f on next Free directly, to sequence it after
       case ObserveDeltaF(observer, next) => ObserveDeltaF(observer, f(next))
@@ -123,6 +123,7 @@ object BoxDeltaF {
   def get[T](box: Box[T])                 = liftF(ReadBoxDeltaF(box, identity: T => T))
   def observe(observer: Observer)         = liftF(ObserveDeltaF(observer, ()))
   def unobserve(observer: Observer)       = liftF(UnobserveDeltaF(observer, ()))
+  def createReaction(action: BoxScript[Unit]) = liftF(CreateReactionDeltaF(action, identity: Reaction => Reaction))
 }
 
 /** A sequence of BoxDelta instances in order, plus append and a potentially faster way of finding the most recent write on a given box */
@@ -211,6 +212,11 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
 
   def observe(observer: Observer): (BoxDeltas, Observer) = (BoxDeltas.single(Observe(observer)), observer)
   def unobserve(observer: Observer): (BoxDeltas, Observer) = (BoxDeltas.single(Unobserve(observer)), observer)
+
+  def createReaction(action: BoxScript[Unit]): (BoxDeltas, Reaction) = {
+    val reaction = Reaction()
+    (BoxDeltas.single(CreateReaction(reaction, action)), reaction)
+  }
 
   /**
    * Return true if this revision delta alters the revision it is applied to
@@ -310,6 +316,7 @@ object Shelf {
 
   def runScript[A](script: BoxScript[A], rad: RevisionAndDeltas) = runScriptInner[A](script, rad)
 
+  //FIXME this is not tail recursive - either make it so, or replace it with an imperative loop, make sure this doesn't leak
   private final def runScriptInner[A](script: BoxScript[_], rad: RevisionAndDeltas): (RevisionAndDeltas, A) = script.resume match {
 
     case -\/(CreateBoxDeltaF(t, toNext)) =>
@@ -325,6 +332,11 @@ object Shelf {
     case -\/(WriteBoxDeltaF(b, t, next)) =>
       val (deltas, box) = rad.set(b, t)
       runScriptInner(next, rad.appendDeltas(deltas))
+
+    case -\/(CreateReactionDeltaF(action, next)) =>
+      val (deltas, reaction) = rad.createReaction(action)
+      val n = next(reaction)
+      runScriptInner(n, rad.appendDeltas(deltas))
 
     case -\/(ObserveDeltaF(obs, next)) =>
       val (deltas, _) = rad.observe(obs)
