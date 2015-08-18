@@ -167,6 +167,54 @@ object BoxDeltas {
   def single(d: BoxDelta): BoxDeltas = empty.append(d)
 }
 
+object RevisionAndDeltas {
+  /**
+   * Run a script and append the deltas it generates to an existing RevisionAndDeltas, creating a new
+   * RevisionAndDeltas and a script result
+   * @param script    The script to run
+   * @param rad       The initial RevisionAndDeltas
+   * @tparam A        The result type of the script
+   * @return          (new RevisionAndDeltas, script result)
+   */
+  @tailrec final def appendScript[A](script: BoxScript[A], rad: RevisionAndDeltas): (RevisionAndDeltas, A) = script.resume match {
+
+    case -\/(CreateBoxDeltaF(t, toNext)) =>
+      val (deltas, box) = rad.create(t)
+      val next = toNext(box)
+      val rad2 = rad.appendDeltas(deltas)
+      appendScript(next, rad2)
+
+    case -\/(ReadBoxDeltaF(b, toNext)) =>
+      val (deltas, value) = rad.get(b)
+      val next = toNext(value)
+      val rad2 = rad.appendDeltas(deltas)
+      appendScript(next, rad2)
+
+    case -\/(WriteBoxDeltaF(b, t, next)) =>
+      val (deltas, box) = rad.set(b, t)
+      val rad2 = rad.appendDeltas(deltas)
+      appendScript(next, rad2)
+
+    case -\/(CreateReactionDeltaF(action, toNext)) =>
+      val (deltas, reaction) = rad.createReaction(action)
+      val next = toNext(reaction)
+      val rad2 = rad.appendDeltas(deltas)
+      appendScript(next, rad2)
+
+    case -\/(ObserveDeltaF(obs, next)) =>
+      val (deltas, _) = rad.observe(obs)
+      val rad2 = rad.appendDeltas(deltas)
+      appendScript(next, rad2)
+
+    case -\/(UnobserveDeltaF(obs, next)) =>
+      val (deltas, _) = rad.unobserve(obs)
+      val rad2 = rad.appendDeltas(deltas)
+      appendScript(next, rad2)
+
+    case \/-(x) => (rad, x.asInstanceOf[A])
+  }
+}
+
 case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
 
   def create[T](t: T): (BoxDeltas, Box[T]) = {
@@ -216,41 +264,8 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
   /** Create a new RevisionAndDeltas with same revision, but with new deltas appended to our own */
   def appendDeltas(d: BoxDeltas) = RevisionAndDeltas(revision, deltas.append(d))
 
-  /** Run a script and append the deltas it generates, creating a new RevisionAndDeltas and a script result */
-  def appendScript[A](script: BoxScript[A]) = appendScriptInner[A](script, this)
-
-  //FIXME this is not tail recursive - either make it so, or replace it with an imperative loop, make sure this doesn't leak
-  private final def appendScriptInner[A](script: BoxScript[_], rad: RevisionAndDeltas): (RevisionAndDeltas, A) = script.resume match {
-
-    case -\/(CreateBoxDeltaF(t, toNext)) =>
-      val (deltas, box) = rad.create(t)
-      val n = toNext(box)
-      appendScriptInner(n, rad.appendDeltas(deltas))
-
-    case -\/(ReadBoxDeltaF(b, toNext)) =>
-      val (deltas, value) = rad.get(b)
-      val n = toNext(value)
-      appendScriptInner(n, rad.appendDeltas(deltas))
-
-    case -\/(WriteBoxDeltaF(b, t, next)) =>
-      val (deltas, box) = rad.set(b, t)
-      appendScriptInner(next, rad.appendDeltas(deltas))
-
-    case -\/(CreateReactionDeltaF(action, next)) =>
-      val (deltas, reaction) = rad.createReaction(action)
-      val n = next(reaction)
-      appendScriptInner(n, rad.appendDeltas(deltas))
-
-    case -\/(ObserveDeltaF(obs, next)) =>
-      val (deltas, _) = rad.observe(obs)
-      appendScriptInner(next, rad.appendDeltas(deltas))
-
-    case -\/(UnobserveDeltaF(obs, next)) =>
-      val (deltas, _) = rad.unobserve(obs)
-      appendScriptInner(next, rad.appendDeltas(deltas))
-
-    case \/-(x) => (rad, x.asInstanceOf[A])
-  }
+  /** Run a script and append the deltas it generates to this instance, creating a new RevisionAndDeltas and a script result */
+  def appendScript[A](script: BoxScript[A]): (RevisionAndDeltas, A) = RevisionAndDeltas.appendScript[A](script, this)
 
   override def toString = "RevisionAndDeltas(" + revision.toString + "," + deltas + ")"
 }
