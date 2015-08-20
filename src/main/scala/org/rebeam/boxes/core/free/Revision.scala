@@ -327,11 +327,11 @@ class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[
     //We conflict if the deltas call for reading or writing a box that has changed since the start revision of the
     //RevisionAndDeltas. Note that there is no conflict for reading/writing boxes that don't exist in this revision,
     //since they must be created in the delta
-    val conflicts = rad.deltas.deltas.exists(delta => delta match {
-      case ReadBox(box) => indexOf(box).map(_ > start).getOrElse(false)
-      case WriteBox(box, _) => indexOf(box).map(_ > start).getOrElse(false)
+    val conflicts = rad.deltas.deltas.exists{
+      case ReadBox(box) => indexOf(box).exists(_ > start)
+      case WriteBox(box, _) => indexOf(box).exists(_ > start)
       case _ => false
-    })
+    }
 
     !conflicts
   }
@@ -369,6 +369,10 @@ object Shelf {
   def atomic[A](s: BoxScript[A]): A = runRepeated(s)._2
 
   def commit(rad: RevisionAndDeltas): Option[Revision] = {
+    //TODO: Note we can be more optimistic here - get the current revision, try to apply it and if that works, lock
+    //and if the current revision is still the same, commit, otherwise have another try. This would reduce the
+    //time lock is held to almost nothing - just long enough to check revision has not changed, and update watcher and
+    //observer lists. These could be updated with sets to add/remove calculated outside lock as well.
     lock.write{
       //if the delta does nothing, don't create a new revision, just return the current one
       if (!rad.altersRevision) {
@@ -393,8 +397,8 @@ object Shelf {
         //Move to the new revision
         current = updated
 
-        //TODO we could do this outside lock. We would want to ensure that observers still receive revisions in strict
-        //order.
+        //TODO we should do this outside lock. We would want to ensure that observers still receive revisions in strict
+        //order, for this we could use a queue. We are currently really relying on observers being quick...
         //Notify observers.
         observers.foreach(_.observe(updated))
 

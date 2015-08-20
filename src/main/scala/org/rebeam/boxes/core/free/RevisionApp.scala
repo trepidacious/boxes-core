@@ -6,17 +6,9 @@ object RevisionApp extends App {
 
   import BoxDeltaF._
 
-  def createName(s: String) = for {
-    name <- create(s)
-  } yield name
+  val name: Box[String] = atomic{create("bob")}
 
-  val name: Box[String] = atomic{createName("bob")}
-
-  val getName = for {
-    bobName <- name()
-  } yield bobName
-
-  println(atomic{getName})
+  println(atomic{name()})
 
   val o = new Observer {
     //We have a revision, so we can just use this to retrieve data via box.apply(revision)
@@ -28,21 +20,21 @@ object RevisionApp extends App {
     //is always acceptable.
     //Note that in this case we are running the atomic on the CURRENT revision at the time, not necessarily
     //the same revision observe is called with
-    override def observe(r: Revision): Unit = println("Observed name as " + atomic{getName})
+    override def observe(r: Revision): Unit = println("Observed name as " + atomic{name()})
   }
 
   //Register the observer
-  atomic{
-    for {
-      _ <- observe(o)
-    } yield ()
-  }
+  atomic{observe(o)}
 
   //Make a change so we can observe it
-  atomic{
-    for {
-      _ <- name() = "bobobobob"
-    } yield ()
-  }
+  atomic{name() = "bobobobob"}
+
+  //Make a modify script
+  def modify[T](b: Box[T], f: T => T) = for {
+    o <- b()
+    _ <- b() = f(o)
+  } yield o
+
+  println("Modified from " + atomic(modify(name, (s: String) => s + "-mod")))
 
 }
