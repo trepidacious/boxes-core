@@ -14,44 +14,8 @@ object Reactor extends Logging{
    * changes caused by the reactions we ran appended.
    */
   def react(rad: RevisionAndDeltas, deltas: BoxDeltas): RevisionAndDeltas = {
-    println("Reacting to deltas " + deltas)
-
     //TODO reimplement functional react, currently have an imperative implementation,
     //the mutable state in reactIm shouldn't be visible externally
-//    //Pend any newly created reactions, plus any reactions with the box as a source
-//    val pendingReactionIds = deltas.deltas.foldLeft(Set.empty[Long]){
-//      case (s, CreateReaction(reaction, action)) => s + reaction.id
-//      case (s, WriteBox(box, _)) => s ++ rad.reactionGraph.reactionsSourcingBox(box.id)
-//      case (s, _) => s
-//    }
-//
-//    //Now apply the reactions
-//    val reactedRad = pendingReactionIds.foldLeft(rad)((rad, rid) => {
-//      rad.scriptForReactionId(rid) match {
-//        case Some(script) =>
-//          //Note we are evaluating reactions individually, so we don't want to run any triggered by the current
-//          //reaction - we will manually check for conflicts
-//          val (rad2, result, scriptDeltas) = rad.appendScript(script, false)
-//
-//          //Use the deltas to work out new sources/targets for the reaction
-//          val sourceBoxes = scriptDeltas.deltas.foldLeft(Set.empty[Long])((s, d) => d match {
-//            case ReadBox(box) => s + box.id
-//            case _ => s
-//          })
-//          val targetBoxes = scriptDeltas.deltas.foldLeft(Set.empty[Long])((s, d) => d match {
-//            case WriteBox(box, _) => s + box.id
-//            case _ => s
-//          })
-//          val rg = rad2.reactionGraph.updatedForReactionId(rid, sourceBoxes, targetBoxes)
-//
-//          //Add the reaction graph update to rad2, it reflects the state after applying the reaction
-//          rad2.appendDeltas(BoxDeltas.single(UpdateReactionGraph(rg)))
-//
-//        case None => rad
-//      }
-//    })
-//
-//    reactedRad
     reactIm(rad, deltas)
   }
 

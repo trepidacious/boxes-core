@@ -251,6 +251,10 @@ object RevisionAndDeltas {
     case -\/(WriteBoxDeltaF(b, t, next)) =>
       val (deltas, box) = rad.set(b, t)
       val rad2 = rad.appendDeltas(deltas)
+      //TODO - we can probably just skip calling react for efficiency if the write does not
+      //change box state. Note that the reactor itself uses its own mechanism
+      //to observe writes when applying reactions, unlike in old mutable-txn
+      //system
       val rad3 = if (runReactions) Reactor.react(rad2, deltas) else rad2
       appendScript(next, rad3, boxDeltas.append(deltas), runReactions)
 
