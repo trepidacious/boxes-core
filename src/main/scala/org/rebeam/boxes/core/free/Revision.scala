@@ -78,8 +78,7 @@ case class WriteBox[T](box: Box[T], t: T) extends BoxDelta
 case class CreateReaction(reaction: Reaction, action: BoxScript[Unit]) extends BoxDelta
 case class Observe(observer: Observer) extends BoxDelta
 case class Unobserve(observer: Observer) extends BoxDelta
-//case class UpdateReactionGraph(sources: BiMultiMap[Long, Long],
-//                               targets: BiMultiMap[Long, Long]) extends BoxDelta0
+case class UpdateReactionGraph(reactionGraph: ReactionGraph) extends BoxDelta
 
 
 //A Functor based on BoxDeltas that is suitable for use with Free
@@ -91,10 +90,8 @@ case class WriteBoxDeltaF[Next, T](b: Box[T], t: T, next: Next) extends BoxDelta
 case class CreateReactionDeltaF[Next, T](action: BoxScript[Unit], toNext: Reaction => Next) extends BoxDeltaF[Next]
 case class ObserveDeltaF[Next, T](observer: Observer, next: Next) extends BoxDeltaF[Next]
 case class UnobserveDeltaF[Next, T](observer: Observer, next: Next) extends BoxDeltaF[Next]
-//case class UpdateReactionGraphDeltaF[Next, T](b: Box[T], t: T, next: Next) extends BoxDeltaF[Next]
 
 object BoxDeltaF {
-
   implicit val functor: Functor[BoxDeltaF] = new Functor[BoxDeltaF] {
     override def map[A, B](bdf: BoxDeltaF[A])(f: (A) => B): BoxDeltaF[B] = bdf match {
       case CreateBoxDeltaF(t, toNext) => CreateBoxDeltaF(t, toNext andThen f) //toNext returns the next Free when called with t:T,
@@ -116,6 +113,23 @@ object BoxDeltaF {
   def createReaction(action: BoxScript[Unit]) = liftF(CreateReactionDeltaF(action, identity: Reaction => Reaction))
 }
 
+////Another functor with a restricted set of operations suitable for use in reactions
+//sealed trait BoxReactionDeltaF[+Next]
+//case class ReadBoxReactionDeltaF[Next, T](b: Box[T], toNext: T => Next) extends BoxReactionDeltaF[Next]
+//case class WriteBoxReactionDeltaF[Next, T](b: Box[T], t: T, next: Next) extends BoxReactionDeltaF[Next]
+//
+//object BoxReactionDeltaF {
+//  implicit val functor: Functor[BoxReactionDeltaF] = new Functor[BoxReactionDeltaF] {
+//    override def map[A, B](bdf: BoxReactionDeltaF[A])(f: (A) => B): BoxReactionDeltaF[B] = bdf match {
+//      case ReadBoxReactionDeltaF(b, toNext) => ReadBoxReactionDeltaF(b, toNext andThen f)
+//      case WriteBoxReactionDeltaF(b, t, next) => WriteBoxReactionDeltaF(b, t, f(next))
+//    }
+//  }
+//
+//  def set[T](box: Box[T], t: T)           = liftF(WriteBoxReactionDeltaF(box, t, ()))
+//  def get[T](box: Box[T])                 = liftF(ReadBoxReactionDeltaF(box, identity: T => T))
+//}
+
 /** A sequence of BoxDelta instances in order applied, plus append and a potentially faster way of finding the most recent write on a given box */
 trait BoxDeltas {
   def deltas: Vector[BoxDelta]
@@ -129,10 +143,35 @@ trait BoxDeltas {
 
   def altersRevision: Boolean
 
+  def reactionGraph: Option[ReactionGraph]
+
+  /** Get created reaction script for a given id, if there is one */
+  def scriptForReactionId(rid: Long): Option[BoxScript[Unit]]
+}
+
+case class ReactionGraph(sources: BiMultiMap[Long, Long], targets: BiMultiMap[Long, Long]) {
+  def removedReactions(reactionDeletes: Set[Long]) = {
+    val prunedSources = sources.removedKeys(reactionDeletes)
+    val prunedTargets = targets.removedKeys(reactionDeletes)
+    ReactionGraph(prunedSources, prunedTargets)
+  }
+
+  def targetsOfReaction(rid: Long) = targets.valuesFor(rid)
+  def sourcesOfReaction(rid: Long) = sources.valuesFor(rid)
+
+  def reactionsTargettingBox(bid: Long) = targets.keysFor(bid)
+  def reactionsSourcingBox(bid: Long) = sources.keysFor(bid)
+
+  def updatedForReactionId(rid: Long, sourceBoxes: Set[Long], targetBoxes: Set[Long]) =
+    ReactionGraph(sources.updated(rid, sourceBoxes), targets.updated(rid, targetBoxes))
+
+}
+object ReactionGraph {
+  val empty = new ReactionGraph(BiMultiMap.empty, BiMultiMap.empty)
 }
 
 /** A BoxDeltas that caches all WriteBox deltas in a map to make boxWrite more efficient */
-private class BoxDeltasCachedWrites(val deltas: Vector[BoxDelta], writes: Map[Box[Any], Any]) extends BoxDeltas {
+private class BoxDeltasCachedWrites(val deltas: Vector[BoxDelta], writes: Map[Box[Any], Any], val reactionGraph: Option[ReactionGraph], val idToScriptMap: Map[Long, BoxScript[Unit]]) extends BoxDeltas {
 
   def append(d: BoxDeltas): BoxDeltas = {
     //Produce new writes cache, updating entries according to any WriteBox deltas in appended BoxDeltas
@@ -140,7 +179,15 @@ private class BoxDeltasCachedWrites(val deltas: Vector[BoxDelta], writes: Map[Bo
       case WriteBox(box, t) => writes.updated(box.asInstanceOf[Box[Any]], t)
       case _ => writes
     })
-    new BoxDeltasCachedWrites(deltas ++ d.deltas, newWrites)
+    val newReactionGraph = d.deltas.foldLeft(reactionGraph)((rg, delta) => delta match {
+      case UpdateReactionGraph(newGraph) => Some(newGraph)
+      case _ => rg
+    })
+    val newIdToScript = d.deltas.foldLeft(idToScriptMap)((m, delta) => delta match {
+      case CreateReaction(reaction, script) => m.updated(reaction.id, script)
+      case _ => m
+    })
+    new BoxDeltasCachedWrites(deltas ++ d.deltas, newWrites, newReactionGraph, newIdToScript)
   }
 
   def append(d: BoxDelta): BoxDeltas = {
@@ -149,7 +196,15 @@ private class BoxDeltasCachedWrites(val deltas: Vector[BoxDelta], writes: Map[Bo
       case WriteBox(box, t) => writes.updated(box, t)
       case _ => writes
     }
-    new BoxDeltasCachedWrites(deltas ++ Vector(d), newWrites)
+    val newReactionGraph = d match {
+      case UpdateReactionGraph(newGraph) => Some(newGraph)
+      case _ => reactionGraph
+    }
+    val newIdToScript = d match {
+      case CreateReaction(reaction, script) => idToScriptMap.updated(reaction.id, script)
+      case _ => idToScriptMap
+    }
+    new BoxDeltasCachedWrites(deltas ++ Vector(d), newWrites, newReactionGraph, newIdToScript)
   }
 
   def boxWrite[T](box: Box[T]): Option[T] = writes.get(box.asInstanceOf[Box[Any]]).asInstanceOf[Option[T]]
@@ -159,11 +214,13 @@ private class BoxDeltasCachedWrites(val deltas: Vector[BoxDelta], writes: Map[Bo
     case _ => true
   }
 
+  def scriptForReactionId(rid: Long): Option[BoxScript[Unit]] = idToScriptMap.get(rid)
+
   override def toString = "BoxDeltasCachedWrites(" + deltas + ", " + writes + ")";
 }
 
 object BoxDeltas {
-  def empty: BoxDeltas = new BoxDeltasCachedWrites(Vector.empty, Map.empty)
+  def empty: BoxDeltas = new BoxDeltasCachedWrites(Vector.empty, Map.empty, None: Option[ReactionGraph], Map.empty)
   def single(d: BoxDelta): BoxDeltas = empty.append(d)
 }
 
@@ -173,45 +230,48 @@ object RevisionAndDeltas {
    * RevisionAndDeltas and a script result
    * @param script    The script to run
    * @param rad       The initial RevisionAndDeltas
+   * @param runReactions  True to run reactions when they are created, or when boxes are written. False to ignore reactions
    * @tparam A        The result type of the script
    * @return          (new RevisionAndDeltas, script result)
    */
-  @tailrec final def appendScript[A](script: BoxScript[A], rad: RevisionAndDeltas): (RevisionAndDeltas, A) = script.resume match {
+  @tailrec final def appendScript[A](script: BoxScript[A], rad: RevisionAndDeltas, boxDeltas: BoxDeltas, runReactions: Boolean = true): (RevisionAndDeltas, A, BoxDeltas) = script.resume match {
 
     case -\/(CreateBoxDeltaF(t, toNext)) =>
       val (deltas, box) = rad.create(t)
       val next = toNext(box)
       val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2)
+      appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
 
     case -\/(ReadBoxDeltaF(b, toNext)) =>
       val (deltas, value) = rad.get(b)
       val next = toNext(value)
       val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2)
+      appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
 
     case -\/(WriteBoxDeltaF(b, t, next)) =>
       val (deltas, box) = rad.set(b, t)
       val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2)
+      val rad3 = if (runReactions) Reactor.react(rad2, deltas) else rad2
+      appendScript(next, rad3, boxDeltas.append(deltas), runReactions)
 
     case -\/(CreateReactionDeltaF(action, toNext)) =>
       val (deltas, reaction) = rad.createReaction(action)
       val next = toNext(reaction)
       val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2)
+      val rad3 = if (runReactions) Reactor.react(rad2, deltas) else rad2
+      appendScript(next, rad3, boxDeltas.append(deltas), runReactions)
 
     case -\/(ObserveDeltaF(obs, next)) =>
       val (deltas, _) = rad.observe(obs)
       val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2)
+      appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
 
     case -\/(UnobserveDeltaF(obs, next)) =>
       val (deltas, _) = rad.unobserve(obs)
       val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2)
+      appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
 
-    case \/-(x) => (rad, x.asInstanceOf[A])
+    case \/-(x) => (rad, x.asInstanceOf[A], boxDeltas)
   }
 }
 
@@ -227,26 +287,17 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
   ))
 
   def set[T](box: Box[T], t: T): (BoxDeltas, Box[T]) = {
-    val different = _get(box) != t
-    //If box value would not be changed, skip write
-    val deltas = if (different) {
-      BoxDeltas.single(WriteBox(box, t))
-    } else {
-      BoxDeltas.empty
-    }
-    //TODO handle reactions
-    //      withReactor(_.afterSet(box, t, different))
-    (deltas, box)
+    //We need to record the write to have reactions work properly etc., however the interpreter
+    //is free to ignore writes to same value to optimise when they would make no difference
+    (BoxDeltas.single(WriteBox(box, t)), box)
   }
 
   def get[T](box: Box[T]): (BoxDeltas, T) = {
     val v = _get(box)
-
-    //TODO handle reactions
-    //Only need to use a reactor if one is active
-    //      currentReactor.foreach(_.afterGet(box))
     (BoxDeltas.single(ReadBox(box)), v)
   }
+
+  def scriptForReactionId(rid: Long): Option[BoxScript[Unit]] = deltas.scriptForReactionId(rid).orElse(revision.scriptForReactionId(rid))
 
   def observe(observer: Observer): (BoxDeltas, Observer) = (BoxDeltas.single(Observe(observer)), observer)
   def unobserve(observer: Observer): (BoxDeltas, Observer) = (BoxDeltas.single(Unobserve(observer)), observer)
@@ -256,6 +307,8 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
     (BoxDeltas.single(CreateReaction(reaction, action)), reaction)
   }
 
+  def reactionGraph: ReactionGraph = deltas.reactionGraph.getOrElse(revision.reactionGraph)
+
   /**
    * Return true if this revision delta alters the revision it is applied to
    */
@@ -264,13 +317,16 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
   /** Create a new RevisionAndDeltas with same revision, but with new deltas appended to our own */
   def appendDeltas(d: BoxDeltas) = RevisionAndDeltas(revision, deltas.append(d))
 
-  /** Run a script and append the deltas it generates to this instance, creating a new RevisionAndDeltas and a script result */
-  def appendScript[A](script: BoxScript[A]): (RevisionAndDeltas, A) = RevisionAndDeltas.appendScript[A](script, this)
+  /** Run a script and append the deltas it generates to this instance, creating a new RevisionAndDeltas, a script result and the new deltas added by the script */
+  def appendScript[A](script: BoxScript[A], runReactions: Boolean = true): (RevisionAndDeltas, A, BoxDeltas) = RevisionAndDeltas.appendScript[A](script, this, BoxDeltas.empty, runReactions)
 
   override def toString = "RevisionAndDeltas(" + revision.toString + "," + deltas + ")"
 }
 
-class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[Long, BoxScript[Unit]], val sources: BiMultiMap[Long, Long], val targets: BiMultiMap[Long, Long], val boxReactions: Map[Long, Set[Reaction]]) {
+
+
+
+class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[Long, BoxScript[Unit]], val reactionGraph: ReactionGraph, val boxReactions: Map[Long, Set[Reaction]]) {
 
   def stateOf[T](box: Box[T]): Option[BoxState[T]] = for {
     change <- map.get(box.id)
@@ -283,6 +339,8 @@ class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[
     val change = map.get(box.id)
     change.flatMap(c => box.getValue(c))
   }
+
+  def scriptForReactionId(rid: Long): Option[BoxScript[Unit]] = reactionMap.get(rid)
 
   private[core] def updated(deltas: BoxDeltas, deletes: List[Long], reactionDeletes: List[Long]) = {
     val newIndex = index + 1
@@ -310,16 +368,10 @@ class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[
     //boxReactions maps to retain reactions for revisions while the boxes are still reachable
     val prunedBoxReactions = deletes.foldLeft(boxReactions) { case (m, id) => m - id }
 
-    //At this point we have to use the updates to reaction graph to update sources and targets. This will
-    //need some work - UpdateReactionGraph is not currently correct, it needs to represent the new knowledge
-    //about the reaction graph got from running a reaction, with a function to use it to incrementally update
-    //sources and targets
+    //Get new reaction graph if there is one in the deltas, otherwise keep our old one, then remove deleted reactions
+    val newReactionGraph = deltas.reactionGraph.getOrElse(reactionGraph).removedReactions(reactionDeletes.toSet)
 
-    //Do not track sources and targets of removed reactions
-    val prunedSources = sources.removedKeys(reactionDeletes.toSet)
-    val prunedTargets = targets.removedKeys(reactionDeletes.toSet)
-
-    new Revision(newIndex, newMap, newReactionMap, prunedSources, prunedTargets, prunedBoxReactions)
+    new Revision(newIndex, newMap, newReactionMap, newReactionGraph, prunedBoxReactions)
   }
 
   def canApplyDelta(rad: RevisionAndDeltas) = {
@@ -342,7 +394,7 @@ class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[
 object Shelf {
 
   private val lock = RWLock()
-  private var current = new Revision(0, Map.empty, Map.empty, BiMultiMap.empty, BiMultiMap.empty, Map.empty)
+  private var current = new Revision(0, Map.empty, Map.empty, ReactionGraph.empty, Map.empty)
 
   private val retries = 10000
 
@@ -358,7 +410,7 @@ object Shelf {
 
     val baseRad = RevisionAndDeltas(baseRevision, BoxDeltas.empty)
 
-    val (finalRad, result) = baseRad.appendScript(s)
+    val (finalRad, result, _) = baseRad.appendScript(s)
 
     commit(RevisionAndDeltas(baseRevision, finalRad.deltas)).map((_, result))
   }
@@ -416,3 +468,8 @@ object Shelf {
 trait Observer {
   def observe(r: Revision): Unit
 }
+
+class BoxException(message: String = "") extends Exception(message)
+class FailedReactionsException(message: String = "") extends BoxException(message)
+class ConflictingReactionException(message: String = "") extends BoxException(message)
+class ReactionAppliedTooManyTimesInCycle(message: String = "") extends BoxException(message)

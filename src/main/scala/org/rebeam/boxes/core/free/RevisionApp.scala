@@ -37,4 +37,16 @@ object RevisionApp extends App {
 
   println("Modified from " + atomic(modify(name, (s: String) => s + "-mod")))
 
+  val upperCase = atomic{create("blank")}
+  val enforceUpperCase = atomic{createReaction{
+    for {
+      n <- name()
+      _ <- upperCase() = n.toUpperCase
+    } yield ()
+  }}
+
+  println(atomic(upperCase()))
+  atomic(name() = "alice")
+  println(atomic(upperCase()))
+
 }
