@@ -1,6 +1,5 @@
 package org.rebeam.boxes.core.free
 
-import org.rebeam.boxes.core.free.BoxTypes.BoxScript
 import grizzled.slf4j.Logging
 
 import scala.collection.immutable.Set
@@ -131,6 +130,8 @@ object Reactor extends Logging{
         case Unobserve(_) => true
         case ReadBox(_) => false
         case UpdateReactionGraph(_) => false
+        case AttachReactionToBox(_, _) => false
+        case DetachReactionFromBox(_, _) => false
       }
       if (conflict) {
         logger.error("Reaction id " + r + " conflicted")

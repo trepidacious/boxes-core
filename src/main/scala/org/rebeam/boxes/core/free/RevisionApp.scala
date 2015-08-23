@@ -12,7 +12,7 @@ object RevisionApp extends App {
 
   val o = new Observer {
     //We have a revision, so we can just use this to retrieve data via box.apply(revision)
-    //    override def observe(r: Revision): Unit = println("Observed name as " + name(r) + " in " + r)
+    override def observe(r: Revision): Unit = println("Observed name as " + name(r) + " in " + r)
 
     //Observer could also execute a new atomic - be careful to avoid loops, atomics must eventually stop
     //being called in response to changes. Ideally an atomic like this should only make changes once, and then
@@ -20,7 +20,7 @@ object RevisionApp extends App {
     //is always acceptable.
     //Note that in this case we are running the atomic on the CURRENT revision at the time, not necessarily
     //the same revision observe is called with
-    override def observe(r: Revision): Unit = println("Observed name as " + atomic{name()})
+//    override def observe(r: Revision): Unit = println("Observed name as " + atomic{name()})
   }
 
   //Register the observer
@@ -29,21 +29,9 @@ object RevisionApp extends App {
   //Make a change so we can observe it
   atomic{name() = "bobobobob"}
 
-  //Make a modify script
-  def modify[T](b: Box[T], f: T => T) = for {
-    o <- b()
-    _ <- b() = f(o)
-  } yield o
-
   println("Modified from " + atomic(modify(name, (s: String) => s + "-mod")))
 
-  val upperCase = atomic{create("blank")}
-  val enforceUpperCase = atomic{createReaction{
-    for {
-      n <- name()
-      _ <- upperCase() = n.toUpperCase
-    } yield ()
-  }}
+  val upperCase = atomic{cal{name().map(_.toUpperCase)}}
 
   println(atomic(upperCase()))
   atomic(name() = "alice")

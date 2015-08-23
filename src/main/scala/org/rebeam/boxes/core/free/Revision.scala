@@ -50,6 +50,9 @@ class Box[T](val id: Long) extends Identifiable {
   def get(revision: Revision): T = revision.valueOf(this).getOrElse(throw new RuntimeException("Missing Box(" + this.id + ")"))
   def apply(revision: Revision): T = get(revision)
 
+  def attachReaction(reaction: Reaction) = BoxDeltaF.attachReactionToBox(reaction, this)
+  def detachReaction(reaction: Reaction) = BoxDeltaF.detachReactionFromBox(reaction, this)
+
 }
 
 object Box {
@@ -79,6 +82,8 @@ case class CreateReaction(reaction: Reaction, action: BoxScript[Unit]) extends B
 case class Observe(observer: Observer) extends BoxDelta
 case class Unobserve(observer: Observer) extends BoxDelta
 case class UpdateReactionGraph(reactionGraph: ReactionGraph) extends BoxDelta
+case class AttachReactionToBox[T](r: Reaction, b: Box[T]) extends BoxDelta
+case class DetachReactionFromBox[T](r: Reaction, b: Box[T]) extends BoxDelta
 
 
 //A Functor based on BoxDeltas that is suitable for use with Free
@@ -91,6 +96,9 @@ case class CreateReactionDeltaF[Next, T](action: BoxScript[Unit], toNext: Reacti
 case class ObserveDeltaF[Next, T](observer: Observer, next: Next) extends BoxDeltaF[Next]
 case class UnobserveDeltaF[Next, T](observer: Observer, next: Next) extends BoxDeltaF[Next]
 
+case class AttachReactionToBoxF[Next, T](r: Reaction, b: Box[T], next: Next) extends BoxDeltaF[Next]
+case class DetachReactionFromBoxF[Next, T](r: Reaction, b: Box[T], next: Next) extends BoxDeltaF[Next]
+
 object BoxDeltaF {
   implicit val functor: Functor[BoxDeltaF] = new Functor[BoxDeltaF] {
     override def map[A, B](bdf: BoxDeltaF[A])(f: (A) => B): BoxDeltaF[B] = bdf match {
@@ -102,6 +110,8 @@ object BoxDeltaF {
       case WriteBoxDeltaF(b, t, next) => WriteBoxDeltaF(b, t, f(next))        //Call f on next Free directly, to sequence it after
       case ObserveDeltaF(observer, next) => ObserveDeltaF(observer, f(next))
       case UnobserveDeltaF(observer, next) => UnobserveDeltaF(observer, f(next))
+      case AttachReactionToBoxF(r, b, next) => AttachReactionToBoxF(r, b, f(next))
+      case DetachReactionFromBoxF(r, b, next) => DetachReactionFromBoxF(r, b, f(next))
     }
   }
 
@@ -111,6 +121,8 @@ object BoxDeltaF {
   def observe(observer: Observer)         = liftF(ObserveDeltaF(observer, ()))
   def unobserve(observer: Observer)       = liftF(UnobserveDeltaF(observer, ()))
   def createReaction(action: BoxScript[Unit]) = liftF(CreateReactionDeltaF(action, identity: Reaction => Reaction))
+  def attachReactionToBox(r: Reaction, b: Box[_]) = liftF(AttachReactionToBoxF(r, b, ()))
+  def detachReactionFromBox(r: Reaction, b: Box[_]) = liftF(DetachReactionFromBoxF(r, b, ()))
 }
 
 ////Another functor with a restricted set of operations suitable for use in reactions
@@ -266,12 +278,22 @@ object RevisionAndDeltas {
       appendScript(next, rad3, boxDeltas.append(deltas), runReactions)
 
     case -\/(ObserveDeltaF(obs, next)) =>
-      val (deltas, _) = rad.observe(obs)
+      val deltas = rad.observe(obs)
       val rad2 = rad.appendDeltas(deltas)
       appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
 
     case -\/(UnobserveDeltaF(obs, next)) =>
-      val (deltas, _) = rad.unobserve(obs)
+      val deltas = rad.unobserve(obs)
+      val rad2 = rad.appendDeltas(deltas)
+      appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
+
+    case -\/(AttachReactionToBoxF(r, b, next)) =>
+      val deltas = rad.attachReactionToBox(r, b)
+      val rad2 = rad.appendDeltas(deltas)
+      appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
+
+    case -\/(DetachReactionFromBoxF(r, b, next)) =>
+      val deltas = rad.detachReactionFromBox(r, b)
       val rad2 = rad.appendDeltas(deltas)
       appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
 
@@ -303,8 +325,11 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
 
   def scriptForReactionId(rid: Long): Option[BoxScript[Unit]] = deltas.scriptForReactionId(rid).orElse(revision.scriptForReactionId(rid))
 
-  def observe(observer: Observer): (BoxDeltas, Observer) = (BoxDeltas.single(Observe(observer)), observer)
-  def unobserve(observer: Observer): (BoxDeltas, Observer) = (BoxDeltas.single(Unobserve(observer)), observer)
+  def observe(observer: Observer): BoxDeltas = BoxDeltas.single(Observe(observer))
+  def unobserve(observer: Observer): BoxDeltas = BoxDeltas.single(Unobserve(observer))
+
+  def attachReactionToBox[T](r: Reaction, b: Box[T]): BoxDeltas = BoxDeltas.single(AttachReactionToBox(r, b))
+  def detachReactionFromBox[T](r: Reaction, b: Box[T]): BoxDeltas = BoxDeltas.single(DetachReactionFromBox(r, b))
 
   def createReaction(action: BoxScript[Unit]): (BoxDeltas, Reaction) = {
     val reaction = Reaction()
@@ -368,9 +393,16 @@ class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[
       case (m, _) => m
     }
 
+    //Apply attach/detach deltas to update boxReactions
+    val newBoxReactions = deltas.deltas.foldLeft(boxReactions){
+      case (br, AttachReactionToBox(r, b)) => br.updated(b.id, boxReactions.getOrElse(b.id, Set.empty) + r)
+      case (br, DetachReactionFromBox(r, b)) => br.updated(b.id, boxReactions.getOrElse(b.id, Set.empty) - r)
+      case (br, _) => br
+    }
+
     //Where boxes have been GCed, also remove the entry in boxReactions for that box - we only want the
     //boxReactions maps to retain reactions for revisions while the boxes are still reachable
-    val prunedBoxReactions = deletes.foldLeft(boxReactions) { case (m, id) => m - id }
+    val prunedBoxReactions = deletes.foldLeft(newBoxReactions) { case (m, id) => m - id }
 
     //Get new reaction graph if there is one in the deltas, otherwise keep our old one, then remove deleted reactions
     val newReactionGraph = deltas.reactionGraph.getOrElse(reactionGraph).removedReactions(reactionDeletes.toSet)
