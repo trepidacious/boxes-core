@@ -99,6 +99,8 @@ case class UnobserveDeltaF[Next, T](observer: Observer, next: Next) extends BoxD
 case class AttachReactionToBoxF[Next, T](r: Reaction, b: Box[T], next: Next) extends BoxDeltaF[Next]
 case class DetachReactionFromBoxF[Next, T](r: Reaction, b: Box[T], next: Next) extends BoxDeltaF[Next]
 
+case class ChangedSourcesF[Next, T](next: Set[Box[_]] => Next) extends BoxDeltaF[Next]
+
 object BoxDeltaF {
   implicit val functor: Functor[BoxDeltaF] = new Functor[BoxDeltaF] {
     override def map[A, B](bdf: BoxDeltaF[A])(f: (A) => B): BoxDeltaF[B] = bdf match {
@@ -112,6 +114,8 @@ object BoxDeltaF {
       case UnobserveDeltaF(observer, next) => UnobserveDeltaF(observer, f(next))
       case AttachReactionToBoxF(r, b, next) => AttachReactionToBoxF(r, b, f(next))
       case DetachReactionFromBoxF(r, b, next) => DetachReactionFromBoxF(r, b, f(next))
+
+      case ChangedSourcesF(toNext) => ChangedSourcesF(toNext andThen f)
     }
   }
 
@@ -123,6 +127,7 @@ object BoxDeltaF {
   def createReaction(action: BoxScript[Unit]) = liftF(CreateReactionDeltaF(action, identity: Reaction => Reaction))
   def attachReactionToBox(r: Reaction, b: Box[_]) = liftF(AttachReactionToBoxF(r, b, ()))
   def detachReactionFromBox(r: Reaction, b: Box[_]) = liftF(DetachReactionFromBoxF(r, b, ()))
+  def changedSources() = liftF(ChangedSourcesF(identity))
 }
 
 ////Another functor with a restricted set of operations suitable for use in reactions
@@ -246,19 +251,19 @@ object RevisionAndDeltas {
    * @tparam A        The result type of the script
    * @return          (new RevisionAndDeltas, script result)
    */
-  @tailrec final def appendScript[A](script: BoxScript[A], rad: RevisionAndDeltas, boxDeltas: BoxDeltas, runReactions: Boolean = true): (RevisionAndDeltas, A, BoxDeltas) = script.resume match {
+  @tailrec final def appendScript[A](script: BoxScript[A], rad: RevisionAndDeltas, boxDeltas: BoxDeltas, runReactions: Boolean = true, changedSources: Set[Box[_]] = Set.empty): (RevisionAndDeltas, A, BoxDeltas) = script.resume match {
 
     case -\/(CreateBoxDeltaF(t, toNext)) =>
       val (deltas, box) = rad.create(t)
       val next = toNext(box)
       val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
+      appendScript(next, rad2, boxDeltas.append(deltas), runReactions, changedSources)
 
     case -\/(ReadBoxDeltaF(b, toNext)) =>
       val (deltas, value) = rad.get(b)
       val next = toNext(value)
       val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
+      appendScript(next, rad2, boxDeltas.append(deltas), runReactions, changedSources)
 
     case -\/(WriteBoxDeltaF(b, t, next)) =>
       val (deltas, box) = rad.set(b, t)
@@ -268,34 +273,38 @@ object RevisionAndDeltas {
       //to observe writes when applying reactions, unlike in old mutable-txn
       //system
       val rad3 = if (runReactions) Reactor.react(rad2, deltas) else rad2
-      appendScript(next, rad3, boxDeltas.append(deltas), runReactions)
+      appendScript(next, rad3, boxDeltas.append(deltas), runReactions, changedSources)
 
     case -\/(CreateReactionDeltaF(action, toNext)) =>
       val (deltas, reaction) = rad.createReaction(action)
       val next = toNext(reaction)
       val rad2 = rad.appendDeltas(deltas)
       val rad3 = if (runReactions) Reactor.react(rad2, deltas) else rad2
-      appendScript(next, rad3, boxDeltas.append(deltas), runReactions)
+      appendScript(next, rad3, boxDeltas.append(deltas), runReactions, changedSources)
 
     case -\/(ObserveDeltaF(obs, next)) =>
       val deltas = rad.observe(obs)
       val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
+      appendScript(next, rad2, boxDeltas.append(deltas), runReactions, changedSources)
 
     case -\/(UnobserveDeltaF(obs, next)) =>
       val deltas = rad.unobserve(obs)
       val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
+      appendScript(next, rad2, boxDeltas.append(deltas), runReactions, changedSources)
 
     case -\/(AttachReactionToBoxF(r, b, next)) =>
       val deltas = rad.attachReactionToBox(r, b)
       val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
+      appendScript(next, rad2, boxDeltas.append(deltas), runReactions, changedSources)
 
     case -\/(DetachReactionFromBoxF(r, b, next)) =>
       val deltas = rad.detachReactionFromBox(r, b)
       val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2, boxDeltas.append(deltas), runReactions)
+      appendScript(next, rad2, boxDeltas.append(deltas), runReactions, changedSources)
+
+    case -\/(ChangedSourcesF(toNext)) =>
+      val next = toNext(changedSources)
+      appendScript(next, rad, boxDeltas, runReactions, changedSources)
 
     case \/-(x) => (rad, x.asInstanceOf[A], boxDeltas)
   }
@@ -347,7 +356,19 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
   def appendDeltas(d: BoxDeltas) = RevisionAndDeltas(revision, deltas.append(d))
 
   /** Run a script and append the deltas it generates to this instance, creating a new RevisionAndDeltas, a script result and the new deltas added by the script */
-  def appendScript[A](script: BoxScript[A], runReactions: Boolean = true): (RevisionAndDeltas, A, BoxDeltas) = RevisionAndDeltas.appendScript[A](script, this, BoxDeltas.empty, runReactions)
+  def appendScript[A](script: BoxScript[A], runReactions: Boolean = true, changedSources: Set[Box[_]] = Set.empty): (RevisionAndDeltas, A, BoxDeltas) = RevisionAndDeltas.appendScript[A](script, this, BoxDeltas.empty, runReactions, changedSources)
+
+  def deltasWouldChange(newDeltas: BoxDeltas): Boolean = newDeltas.deltas.exists{
+    case WriteBox(b, t) => get(b) != t
+    case CreateReaction(_, _) => true
+    case CreateBox(_) => true
+    case Observe(_) => true
+    case Unobserve(_) => true
+    case ReadBox(_) => false
+    case UpdateReactionGraph(_) => false
+    case AttachReactionToBox(_, _) => false
+    case DetachReactionFromBox(_, _) => false
+  }
 
   override def toString = "RevisionAndDeltas(" + revision.toString + "," + deltas + ")"
 }

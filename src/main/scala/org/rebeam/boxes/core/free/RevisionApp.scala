@@ -31,10 +31,24 @@ object RevisionApp extends App {
 
   println("Modified from " + atomic(modify(name, (s: String) => s + "-mod")))
 
+  println("Changed sources in normal transaction: " + atomic{changedSources()})
+
   val upperCase = atomic{cal{name().map(_.toUpperCase)}}
 
   println(atomic(upperCase()))
   atomic(name() = "alice")
   println(atomic(upperCase()))
+
+  val upperCaseReportSources = atomic{create("ucrs")}
+  val ucrsReaction = atomic{createReaction{
+    for {
+      n <- name()
+      _ <- upperCaseReportSources() = n.toUpperCase
+      cs <- changedSources()
+      _ <- {println("Reaction changed sources: " + cs); name()}
+    } yield ()
+  }}
+
+  atomic(name() = "cate")
 
 }

@@ -15,22 +15,22 @@ object Reactor extends Logging{
   def react(rad: RevisionAndDeltas, deltas: BoxDeltas): RevisionAndDeltas = {
     //TODO reimplement functional react, currently have an imperative implementation,
     //the mutable state in reactIm shouldn't be visible externally
-    reactIm(rad, deltas)
+    reactImpure(rad, deltas)
   }
 
   def radWithReactionRemoved(rad: RevisionAndDeltas, rid: Long): RevisionAndDeltas =
     rad.appendDeltas(BoxDeltas.single(UpdateReactionGraph(rad.reactionGraph.updatedForReactionId(rid, Set.empty, Set.empty))))
 
-  def runReactionScriptToDeltas(rad: RevisionAndDeltas, rid: Long): BoxDeltas = {
+  def runReactionScriptToDeltas(rad: RevisionAndDeltas, rid: Long, changedSources: Set[Box[_]]): BoxDeltas = {
     val script = rad.scriptForReactionId(rid).getOrElse(throw new RuntimeException("Missing reaction for id " + rid))
-    rad.appendScript(script, false)._3
+    rad.appendScript(script, false, changedSources)._3
   }
 
-  def runReactionScript(rad: RevisionAndDeltas, rid: Long): RevisionAndDeltas = {
+  def runReactionScript(rad: RevisionAndDeltas, rid: Long, changedSources: Set[Box[_]]): (RevisionAndDeltas, BoxDeltas) = {
 
     val script = rad.scriptForReactionId(rid).getOrElse(throw new RuntimeException("Missing reaction for id " + rid))
 
-    val (rad2, result, scriptDeltas) = rad.appendScript(script, false)
+    val (rad2, result, scriptDeltas) = rad.appendScript(script, false, changedSources)
 
     //Use the deltas to work out new sources/targets for the reaction
     val sourceBoxes = scriptDeltas.deltas.foldLeft(Set.empty[Long])((s, d) => d match {
@@ -45,20 +45,28 @@ object Reactor extends Logging{
 
     //Add the reaction graph update to rad2, it reflects the state after applying the reaction, this
     //is our result
-    rad2.appendDeltas(BoxDeltas.single(UpdateReactionGraph(rg)))
-
+    (rad2.appendDeltas(BoxDeltas.single(UpdateReactionGraph(rg))), scriptDeltas)
   }
 
-  def reactIm(initialRad: RevisionAndDeltas, deltas: BoxDeltas): RevisionAndDeltas = {
+  def reactImpure(initialRad: RevisionAndDeltas, deltas: BoxDeltas): RevisionAndDeltas = {
 
     var finalRad = initialRad
 
     val reactionsPending = scala.collection.mutable.ArrayBuffer[Long]()
 
+    val changedSourcesForReaction = new scala.collection.mutable.HashMap[Long, scala.collection.mutable.Set[Box[_]]] with scala.collection.mutable.MultiMap[Long, Box[_]]
+
     //Pend any newly created reactions, plus any reactions with the box as a source
     deltas.deltas.foreach{
       case CreateReaction(reaction, action) => reactionsPending += reaction.id
-      case WriteBox(box, _) => reactionsPending ++= finalRad.reactionGraph.reactionsSourcingBox(box.id)
+      case WriteBox(box, _) => {
+        val sourcingReactions = finalRad.reactionGraph.reactionsSourcingBox(box.id)
+        reactionsPending ++= sourcingReactions
+        //Also add written box to changed sources for the reactions
+        for (rid <- sourcingReactions) {
+          changedSourcesForReaction.addBinding(rid, box)
+        }
+      }
       case _ => {}
     }
 
@@ -68,7 +76,7 @@ object Reactor extends Logging{
     //Ids of reactions that may be in conflict with other reactions
     val conflictReactions = new scala.collection.mutable.HashSet[Long]()
 
-    //Number of times each reaction has run in this cycle
+    //Number of times each reaction has run in this cycle, by reaction id
     val reactionApplications = new scala.collection.mutable.HashMap[Long, Int]().withDefaultValue(0)
 
     //Keep cycling until we clear all reactions
@@ -77,8 +85,12 @@ object Reactor extends Logging{
 
       try {
 
-        //Run the script for nextReaction, appending sources/targets as required
-        finalRad = runReactionScript(finalRad, nextReaction)
+        //Run the script for nextReaction, appending sources/targets in reaction graph as required
+        //Also pass in the changed sources for this reaction, in case it needs this information
+        //to decide how to act
+        val changedSources = changedSourcesForReaction.get(nextReaction).getOrElse(Set.empty[Box[_]]).toSet
+        val (newRad, reactionDeltas) = runReactionScript(finalRad, nextReaction, changedSources)
+        finalRad = newRad
 
         //Check for too many applications
         val applications = reactionApplications.getOrElse(nextReaction, 0)
@@ -94,6 +106,17 @@ object Reactor extends Logging{
           target <- finalRad.reactionGraph.targetsOfReaction(nextReaction)
           conflictReaction <- finalRad.reactionGraph.reactionsTargettingBox(target) if (conflictReaction != nextReaction)
         } conflictReactions.add(conflictReaction)
+
+        //Now also pend any reactions that have had sources changed by this reaction,
+        //and add the written boxes to changed sources for that reaction
+        reactionDeltas.deltas.foreach{
+          case WriteBox(box, _) =>
+            for (sourcingReaction <- finalRad.reactionGraph.reactionsSourcingBox(box.id) if (sourcingReaction != nextReaction)) {
+              if (!reactionsPending.contains(sourcingReaction)) reactionsPending += sourcingReaction
+              changedSourcesForReaction.addBinding(sourcingReaction, box)
+            }
+          case _ => {}
+        }
 
       } catch {
         //TODO If this is NOT a BoxException, need to respond better, but can't allow uncaught exception to just stop cycling
@@ -112,37 +135,26 @@ object Reactor extends Logging{
 
     }
 
-    //Check all reactions whose TARGETS were changed
-    //by other reactions are still happy with the state of their targets,
-    //if they are not, this indicates a conflict and should generate a warning.
+    //Check that all reactions whose TARGETS were changed
+    //by other reactions are still happy with the state of their targets.
+    //If they are not, this indicates a conflict and should generate a warning.
     //Note this is NOT the same as when a reaction is applied then has a source
     //changed, this should just result in the reaction being reapplied without
     //the expectation of no writes to its targets.
     conflictReactions.foreach{ r =>
-      val deltas = runReactionScriptToDeltas(finalRad, r)
+
+      val changedSources = changedSourcesForReaction.get(r).getOrElse(Set.empty[Box[_]]).toSet
+
+      val deltas = runReactionScriptToDeltas(finalRad, r, changedSources)
 
       //If there are any deltas that change state, reaction is conflicting and fails
-      val conflict = deltas.deltas.exists{
-        case WriteBox(b, t) => finalRad.get(b) != t
-        case CreateReaction(_, _) => true
-        case CreateBox(_) => true
-        case Observe(_) => true
-        case Unobserve(_) => true
-        case ReadBox(_) => false
-        case UpdateReactionGraph(_) => false
-        case AttachReactionToBox(_, _) => false
-        case DetachReactionFromBox(_, _) => false
-      }
-      if (conflict) {
+      if (finalRad.deltasWouldChange(deltas)) {
         logger.error("Reaction id " + r + " conflicted")
         //Remove the reaction completely from the system, but remember that it failed
         finalRad = radWithReactionRemoved(finalRad, r)
         failedReactions.add(r)
       }
     }
-
-    //TODO: replace this functionality - can provide changes to script interpreter, and add deltaF to retrieve
-//    changedSourcesForReaction.clear()
 
     if (!failedReactions.isEmpty) {
       logger.debug("Failed Reactions: " + failedReactions)
