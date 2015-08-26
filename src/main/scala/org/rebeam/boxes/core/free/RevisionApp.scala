@@ -29,7 +29,7 @@ object RevisionApp extends App {
   //Make a change so we can observe it
   atomic{name() = "bobobobob"}
 
-  println("Modified from " + atomic(modify(name, (s: String) => s + "-mod")))
+  println("Modified from " + atomic(modify(name, (s: String) => s + "-mod")))  
 
   println("Changed sources in normal transaction: " + atomic{changedSources()})
 
