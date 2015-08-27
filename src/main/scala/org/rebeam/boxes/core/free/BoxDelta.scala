@@ -45,7 +45,7 @@ case class DetachReactionFromBoxF[Next, T](r: Reaction, b: Box[T], next: Next) e
 case class ChangedSourcesF[Next, T](next: Set[Box[_]] => Next) extends BoxDeltaF[Next]
 
 object BoxDeltaF {
-  implicit val functor: Functor[BoxDeltaF] = new Functor[BoxDeltaF] {
+  val functor: Functor[BoxDeltaF] = new Functor[BoxDeltaF] {
     override def map[A, B](bdf: BoxDeltaF[A])(f: (A) => B): BoxDeltaF[B] = bdf match {
       case CreateBoxDeltaF(t, toNext) => CreateBoxDeltaF(t, toNext andThen f) //toNext returns the next Free when called with t:T,
       //then we call f on this next Free to sequence it after

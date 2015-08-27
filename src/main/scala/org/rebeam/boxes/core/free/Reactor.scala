@@ -4,7 +4,7 @@ import grizzled.slf4j.Logging
 
 import scala.collection.immutable.Set
 
-object Reactor extends Logging{
+object Reactor extends Logging {
 
   val maxCycle = 10000
 
@@ -14,7 +14,7 @@ object Reactor extends Logging{
    */
   def react(rad: RevisionAndDeltas, deltas: BoxDeltas): RevisionAndDeltas = {
     //TODO reimplement functional react, currently have an imperative implementation,
-    //the mutable state in reactIm shouldn't be visible externally
+    //although the mutable state in reactIm shouldn't be visible externally
     reactImpure(rad, deltas)
   }
 
