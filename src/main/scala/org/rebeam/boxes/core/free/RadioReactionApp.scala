@@ -1,11 +1,10 @@
 package org.rebeam.boxes.core.free
 
 import org.rebeam.boxes.core.free.BoxUtils._
+import org.rebeam.boxes.core.free.BoxTypes._
 import org.rebeam.boxes.core.free.reaction.RadioReaction
 
 object RadioReactionApp extends App {
-
-  import BoxDeltaF._
 
   val options = atomic{
     for {

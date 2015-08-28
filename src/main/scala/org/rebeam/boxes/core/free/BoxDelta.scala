@@ -44,6 +44,8 @@ case class DetachReactionFromBoxF[Next, T](r: Reaction, b: Box[T], next: Next) e
 
 case class ChangedSourcesF[Next, T](next: Set[Box[_]] => Next) extends BoxDeltaF[Next]
 
+case class JustF[Next, T](t: T, toNext: T => Next) extends BoxDeltaF[Next]
+
 object BoxDeltaF {
   val functor: Functor[BoxDeltaF] = new Functor[BoxDeltaF] {
     override def map[A, B](bdf: BoxDeltaF[A])(f: (A) => B): BoxDeltaF[B] = bdf match {
@@ -59,6 +61,8 @@ object BoxDeltaF {
       case DetachReactionFromBoxF(r, b, next) => DetachReactionFromBoxF(r, b, f(next))
 
       case ChangedSourcesF(toNext) => ChangedSourcesF(toNext andThen f)
+
+      case JustF(t, toNext) => JustF(t, toNext andThen f)
     }
   }
 
@@ -70,6 +74,8 @@ object BoxDeltaF {
   def createReaction(action: BoxScript[Unit]) = liftF(CreateReactionDeltaF(action, identity: Reaction => Reaction))
   def attachReactionToBox(r: Reaction, b: Box[_]) = liftF(AttachReactionToBoxF(r, b, ()))
   def detachReactionFromBox(r: Reaction, b: Box[_]) = liftF(DetachReactionFromBoxF(r, b, ()))
+  def just[T](t: T)                       = liftF(JustF(t, identity: T => T))
+
   def changedSources() = liftF(ChangedSourcesF(identity))
 }
 

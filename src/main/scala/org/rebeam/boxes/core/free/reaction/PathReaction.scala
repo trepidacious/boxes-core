@@ -42,6 +42,12 @@ object PathReaction {
   } yield ()
 }
 
+object Path {
+  def apply[T](path : BoxScript[Option[Box[T]]]) = PathViaOption.apply(path)
+  def apply[T](path : BoxScript[Box[T]])(implicit d: DummyImplicit) = PathToBox.apply(path)
+  def apply[T](path : BoxScript[Option[Box[Option[T]]]])(implicit d1: DummyImplicit, d2: DummyImplicit) = PathToOption.apply(path)
+}
+
 object PathToBox {
   def apply[T](path: BoxScript[Box[T]]): BoxScript[Box[T]] = for {
     e <- path

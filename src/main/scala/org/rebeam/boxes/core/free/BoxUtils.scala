@@ -14,6 +14,7 @@ object BoxUtils {
   def attachReactionToBox(r: Reaction, b: Box[_]) = BoxDeltaF.attachReactionToBox(r, b)
   def detachReactionFromBox(r: Reaction, b: Box[_]) = BoxDeltaF.detachReactionFromBox(r, b)
   def changedSources() = BoxDeltaF.changedSources()
+  def just[T](t: T)                       = BoxDeltaF.just(t)
 
   def modify[T](b: Box[T], f: T => T) = for {
     o <- b()

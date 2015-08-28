@@ -71,6 +71,10 @@ object RevisionAndDeltas {
       val next = toNext(changedSources)
       appendScript(next, rad, boxDeltas, runReactions, changedSources)
 
+    case -\/(JustF(t, toNext)) =>
+      val next = toNext(t)
+      appendScript(next, rad, boxDeltas, runReactions, changedSources)
+
     case \/-(x) => (rad, x.asInstanceOf[A], boxDeltas)
   }
 }
