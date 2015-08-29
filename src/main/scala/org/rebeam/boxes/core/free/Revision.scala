@@ -29,7 +29,7 @@ class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[
     //Apply WriteBox deltas
     val newMap = deltas.deltas.foldLeft(prunedMap) {
       case (m, WriteBox(box, value)) =>
-        val newChange = BoxChange(newIndex)
+        val newChange = new BoxChange(newIndex)
         box.asInstanceOf[Box[Any]].addChange(newChange, value)
         m.updated(box.id, newChange)
       case (m, _) => m

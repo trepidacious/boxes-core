@@ -8,7 +8,7 @@ class Box[T](val id: Long) extends Identifiable {
 
   /**
    * Store changes to this box, as a map from the Change to the State that was
-   * set by that Change. Changes that form a revision are retained by RevisionMonad
+   * set by that Change. Changes that form a revision are retained by Revision
    * and used to look up States in refs.
    * Since this is a weak map, it does not retain Changes, they are retained only
    * by the revisions they are in.
@@ -51,5 +51,10 @@ object Box {
 
 case class BoxState[+T](revision: Long, value: T)
 
-case class BoxChange(revision: Long)
+//Note we use BoxChange as a key, and due to garbage collection we can't treat different changes as equal, so we use
+//a normal class, and rely on different instances being unequal even if the revision is the same.
+//However BoxChange is not a public API, and so is pretty much an implementation detail to get garbage collection
+//to work as needed - retaining box values only as long as both the Box and the Revision where the Box had the value
+//are retained.
+class BoxChange(val revision: Long)
 

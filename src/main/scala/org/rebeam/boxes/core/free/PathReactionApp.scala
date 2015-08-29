@@ -2,34 +2,84 @@ package org.rebeam.boxes.core.free
 
 import org.rebeam.boxes.core.free.BoxUtils._
 import org.rebeam.boxes.core.free.BoxTypes._
-import org.rebeam.boxes.core.free.reaction.{PathToOption, PathViaOption, Path}
+import org.rebeam.boxes.core.free.reaction.{PathToBox, PathToOption, PathViaOption, Path}
 
 import scalaz._
 import Scalaz._
 
-object PathReactionApp extends App {
+class Person(val name: Box[String], val friend: Box[Option[Person]])
+object Person {
+  def apply() = for {
+    name <- create("Unnamed")
+    friend <- create[Option[Person]](None)
+  } yield new Person(name, friend)
+}
 
-  class Person(val name: Box[String], val friend: Box[Option[Person]])
-  object Person {
-    def apply() = for {
-      name <- create("Unnamed")
-      friend <- create[Option[Person]](None)
-    } yield new Person(name, friend)
-  }
+object PathReactionApp extends App {
 
   val a = atomic(Person())
   val b = atomic(Person())
   val c = atomic(Person())
 
-  atomic(a.friend() = Some(b))
+  println("1")
 
-  val aFriend = atomic(PathToOption.apply[Person](just(Some(a.friend))))
+  atomic(for {
+    _ <- a.name() = "a"
+    _ <- b.name() = "b"
+    _ <- c.name() = "c"
+    _ <- a.friend() = Some(b)
+    _ <- b.friend() = Some(c)
+  } yield ())
 
-  println(atomic( for {
-    f <- aFriend()
+//  val friendsFriend = atomic(PathToOption.apply[Person](for {
+//    f <- a.friend()
+//  } yield f.map(_.friend)))
+
+  val friendsFriend = atomic(PathToOption.apply[Person](a.friend().map(_.map(_.friend))))
+
+  println(atomic(for {
+    f <- friendsFriend()
     name <- f traverseU (_.name())   //Use traverse to get from Option[Person] and Person => BoxScript[String] to BoxScript[Option[String]]
   } yield name
   ))
+
+  atomic(for {
+    f <- friendsFriend()
+    name <- f traverseU (_.name() = "c2")
+  } yield name
+  )
+
+  println(atomic(for {
+    f <- friendsFriend()
+    name <- f traverseU (_.name())   //Use traverse to get from Option[Person] and Person => BoxScript[String] to BoxScript[Option[String]]
+  } yield name
+  ))
+
+
+  println(atomic(c.name()))
+
+  atomic(c.name() = "c3")
+
+  println(atomic(for {
+    f <- friendsFriend()
+    name <- f traverseU (_.name())   //Use traverse to get from Option[Person] and Person => BoxScript[String] to BoxScript[Option[String]]
+  } yield name
+  ))
+
+  //  println(atomic(for {
+//    f <- a.friend()
+//  } yield f.map(_.friend)))
+
+//  println(atomic(for {
+//    f <- a.friend()
+//    f2 <- f.map(_.friend) traverseU (b => b.get())
+//  } yield f2.flatten))
+
+  //  println(atomic( for {
+//    f <- aFriend()
+//    name <- f traverseU (_.name())   //Use traverse to get from Option[Person] and Person => BoxScript[String] to BoxScript[Option[String]]
+//  } yield name
+//  ))
 //
 //  //    val aFriendAndReaction = Path.boxAndReaction(implicit txn => a.friend)
 //  //    val aFriend = aFriendAndReaction._1
