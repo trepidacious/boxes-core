@@ -1,7 +1,7 @@
-package org.rebeam.boxes.core.free
+package org.rebeam.boxes.core
 
-import org.rebeam.boxes.core.free.BoxTypes._
-import org.rebeam.boxes.core.util.{WeakHashSet, GCWatcher, RWLock}
+import BoxTypes._
+import util.{WeakHashSet, GCWatcher, RWLock}
 
 import scala.collection.immutable.{Range, Map}
 

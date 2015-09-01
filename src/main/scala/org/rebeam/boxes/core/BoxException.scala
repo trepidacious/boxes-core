@@ -1,4 +1,4 @@
-package org.rebeam.boxes.core.free
+package org.rebeam.boxes.core
 
 class BoxException(message: String = "") extends Exception(message)
 class FailedReactionsException(message: String = "") extends BoxException(message)

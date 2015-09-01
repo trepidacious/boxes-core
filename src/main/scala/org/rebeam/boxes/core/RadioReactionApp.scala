@@ -1,8 +1,8 @@
-package org.rebeam.boxes.core.free
+package org.rebeam.boxes.core
 
-import org.rebeam.boxes.core.free.BoxUtils._
-import org.rebeam.boxes.core.free.BoxTypes._
-import org.rebeam.boxes.core.free.reaction.RadioReaction
+import org.rebeam.boxes.core.BoxUtils._
+import org.rebeam.boxes.core.BoxTypes._
+import org.rebeam.boxes.core.reaction.RadioReaction
 
 object RadioReactionApp extends App {
 

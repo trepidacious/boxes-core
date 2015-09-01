@@ -1,8 +1,10 @@
 package org.rebeam.boxes.core.data
 
-import org.rebeam.boxes.core.{Shelf, Box, Txn, TxnR}
+import org.rebeam.boxes.core._
+import BoxTypes._
+import BoxUtils._
 
-import scala.collection.immutable._
+//FIXME this stuff is all fairly awful - can maybe rewrite with shapeless
 
 //An table like view that has some immutability.
 //Will always return the same results for fieldName,
@@ -19,24 +21,24 @@ import scala.collection.immutable._
 //in the Box system, that data is either immutable, or is accessed
 //via a Box and so tracked for reads and writes.
 trait Ledger {
-  def apply(record: Int, field: Int)(implicit txn: TxnR): Any
-  def fieldName(field: Int)(implicit txn: TxnR): String
-  def fieldClass(field: Int)(implicit txn: TxnR): Class[_]
-  def recordCount()(implicit txn: TxnR): Int
-  def fieldCount()(implicit txn: TxnR): Int
+  def apply(record: Int, field: Int): BoxScript[Any]
+  def fieldName(field: Int): BoxScript[String]
+  def fieldClass(field: Int): BoxScript[Class[_]]
+  def recordCount(): BoxScript[Int]
+  def fieldCount(): BoxScript[Int]
   
-  def editable(record: Int, field: Int)(implicit txn: TxnR): Boolean
-  def updated(record: Int, field: Int, value: Any)(implicit txn: Txn): Ledger
+  def editable(record: Int, field: Int): BoxScript[Boolean]
+  def updated(record: Int, field: Int, value: Any): BoxScript[Ledger]
 }
 
 //An immutable view of records of type T as a list of fields
 trait RecordView[T] {
-  def editable(record: Int, field: Int, recordValue: T)(implicit txn: TxnR): Boolean
-  def apply(record: Int, field: Int, recordValue: T)(implicit txn: TxnR): Any
-  def update(record: Int, field: Int, recordValue: T, fieldValue: Any)(implicit txn: Txn)
-  def fieldName(field: Int)(implicit txn: TxnR): String
-  def fieldClass(field: Int)(implicit txn: TxnR): Class[_]
-  def fieldCount()(implicit txn: TxnR): Int
+  def editable(record: Int, field: Int, recordValue: T): BoxScript[Boolean]
+  def apply(record: Int, field: Int, recordValue: T): BoxScript[Any]
+  def update(record: Int, field: Int, recordValue: T, fieldValue: Any): BoxScript[Unit]
+  def fieldName(field: Int): BoxScript[String]
+  def fieldClass(field: Int): BoxScript[Class[_]]
+  def fieldCount(): BoxScript[Int]
 }
 
 /**
@@ -44,17 +46,14 @@ trait RecordView[T] {
  * a RecordView to convert that element to the fields of the record
  */
 case class ListLedger[T](list: Seq[T], rView: RecordView[T]) extends Ledger {
-  def apply(record: Int, field: Int)(implicit txn: TxnR) = rView(record, field, list(record))
-  def fieldName(field: Int)(implicit txn: TxnR): String = rView.fieldName(field)
-  def fieldClass(field: Int)(implicit txn: TxnR) = rView.fieldClass(field)
-  def recordCount()(implicit txn: TxnR) = list.size
-  def fieldCount()(implicit txn: TxnR) = rView.fieldCount
+  def apply(record: Int, field: Int) = rView(record, field, list(record))
+  def fieldName(field: Int) = rView.fieldName(field)
+  def fieldClass(field: Int) = rView.fieldClass(field)
+  def recordCount() = just(list.size)
+  def fieldCount()= rView.fieldCount
   
-  def editable(record: Int, field: Int)(implicit txn: TxnR) = rView.editable(record, field, list(record))
-  def updated(record: Int, field: Int, value: Any)(implicit txn: Txn) = {
-    rView.update(record, field, list(record), value)
-    this
-  }
+  def editable(record: Int, field: Int) = rView.editable(record, field, list(record))
+  def updated(record: Int, field: Int, value: Any) = rView.update(record, field, list(record), value) andThen just(this)
 }
 
 /** 
@@ -62,98 +61,102 @@ case class ListLedger[T](list: Seq[T], rView: RecordView[T]) extends Ledger {
  * current List and RecordView in the provided refs.
  */
 object ListLedgerBox {
-  def now[T](list: Box[_ <: Seq[T]], rView: RecordView[T])(implicit shelf: Shelf) = shelf.transact(implicit txn => apply(list, rView))
-  def apply[T](list: Box[_ <: Seq[T]], rView: RecordView[T])(implicit txn: Txn) = {
-    val v = Box(ListLedger(list(), rView): Ledger)
-    val reaction = txn.createReaction(implicit rTxn => {
-      //Note this will do nothing if list and view are the same, avoiding cycles
-      v() = ListLedger(list(), rView)
-    })
-    v.retainReaction(reaction)
-    v
-  }
+  def apply[T](list: Box[_ <: Seq[T]], rView: Box[RecordView[T]]): BoxScript[Box[ListLedger[T]]] = for {
+    l <- list()
+    rv <- rView()
+    v <- create(ListLedger(l, rv))
+    //Note this will do nothing if list and view are the same, avoiding cycles
+    r <- createReaction(for {
+      l <- list()
+      rv <- rView()
+      _ <- v() = ListLedger(l, rv)
+    } yield())
+    _ <- v.attachReaction(r)
+  } yield v
 }
 
-case class FieldCompositeLedger(ledgers: Seq[Ledger]) extends Ledger {
-
-  def recordCount()(implicit txn: TxnR) = ledgers.foldLeft(ledgers.head.recordCount){(min, l) => math.min(l.recordCount, min)}
-  def fieldCount()(implicit txn: TxnR) = ledgers.foldLeft(0){(sum, l) => sum + l.fieldCount}
-  private def cumulativeFieldCount()(implicit txn: TxnR) = ledgers.scanLeft(0){(c, l) => c + l.fieldCount}.toList //Make cumulative field count, note starts with 0
-  
-  private def ledgerAndFieldAndLedgerIndex(field: Int)(implicit txn: TxnR): (Ledger, Int, Int) = {
-    //Note that -1 is to allow for leading 0 in cumulativeFieldCount
-    val ledgerIndex = cumulativeFieldCount.indexWhere(c => c > field) - 1
-
-    //This happens if EITHER findIndexOf fails and returns -1, OR field is negative and so matches first entry in cumulativeFieldCount
-    if (ledgerIndex < 0) throw new IndexOutOfBoundsException("Field " + field + " is not in composite ledger")
-
-    (ledgers(ledgerIndex), field - cumulativeFieldCount.apply(ledgerIndex), ledgerIndex)
-  }
-  
-  def apply(record: Int, field: Int)(implicit txn: TxnR) = {
-    val (l, f, _) = ledgerAndFieldAndLedgerIndex(field)
-    l.apply(record, f)
-  }
-  
-  def fieldName(field: Int)(implicit txn: TxnR) = {
-    val (l, f, _) = ledgerAndFieldAndLedgerIndex(field)
-    l.fieldName(f)
-  }
-  
-  def fieldClass(field: Int)(implicit txn: TxnR) = {
-    val (l, f, _) = ledgerAndFieldAndLedgerIndex(field)
-    l.fieldClass(f)
-  }
-  
-  def editable(record: Int, field: Int)(implicit txn: TxnR): Boolean = {
-    val (l, f, _) = ledgerAndFieldAndLedgerIndex(field)
-    l.editable(record, f)
-  }
-  
-  def updated(record: Int, field: Int, value:Any)(implicit txn: Txn) = {
-    val (l, f, li) = ledgerAndFieldAndLedgerIndex(field)
-    val newLedger = l.updated(record, f, value)
-    //Optimisation for ledgers that just update mutable data
-    //and return themselves - in that case we don't need to
-    //make a new FieldCompositeLedger, since it would just
-    //contain an equal list of ledgers anyway.
-    if (newLedger == l) {
-      this
-    } else {
-      val newList = ledgers.updated(li, newLedger)
-      FieldCompositeLedger(newList)      
-    }
-  }
-  
-}
-
-/** 
- * Calculated Box that will always hold a FieldCompositeListLedger made from the 
- * Ledgers in the List in a Box
- */
-object FieldCompositeLedgerVar {
-  def apply[T](ledgers: Box[List[Ledger]])(implicit txn: Txn) = {
-    val v = Box(FieldCompositeLedger(ledgers()))    
-    val ledgersReaction = txn.createReaction(implicit txnR => {
-      //Note this will do nothing if list and view are the same, avoiding cycles
-      v() = FieldCompositeLedger(ledgers())
-    })
-    v.retainReaction(ledgersReaction)
-    v
-  }
-}
+//case class FieldCompositeLedger(ledgers: Seq[Ledger]) extends Ledger {
+//
+//  def recordCount()(implicit txn: TxnR) = ledgers.foldLeft(ledgers.head.recordCount){(min, l) => math.min(l.recordCount, min)}
+//  def fieldCount()(implicit txn: TxnR) = ledgers.foldLeft(0){(sum, l) => sum + l.fieldCount}
+//  private def cumulativeFieldCount()(implicit txn: TxnR) = ledgers.scanLeft(0){(c, l) => c + l.fieldCount}.toList //Make cumulative field count, note starts with 0
+//
+//  private def ledgerAndFieldAndLedgerIndex(field: Int)(implicit txn: TxnR): (Ledger, Int, Int) = {
+//    //Note that -1 is to allow for leading 0 in cumulativeFieldCount
+//    val ledgerIndex = cumulativeFieldCount.indexWhere(c => c > field) - 1
+//
+//    //This happens if EITHER findIndexOf fails and returns -1, OR field is negative and so matches first entry in cumulativeFieldCount
+//    if (ledgerIndex < 0) throw new IndexOutOfBoundsException("Field " + field + " is not in composite ledger")
+//
+//    (ledgers(ledgerIndex), field - cumulativeFieldCount.apply(ledgerIndex), ledgerIndex)
+//  }
+//
+//  def apply(record: Int, field: Int)(implicit txn: TxnR) = {
+//    val (l, f, _) = ledgerAndFieldAndLedgerIndex(field)
+//    l.apply(record, f)
+//  }
+//
+//  def fieldName(field: Int)(implicit txn: TxnR) = {
+//    val (l, f, _) = ledgerAndFieldAndLedgerIndex(field)
+//    l.fieldName(f)
+//  }
+//
+//  def fieldClass(field: Int)(implicit txn: TxnR) = {
+//    val (l, f, _) = ledgerAndFieldAndLedgerIndex(field)
+//    l.fieldClass(f)
+//  }
+//
+//  def editable(record: Int, field: Int)(implicit txn: TxnR): Boolean = {
+//    val (l, f, _) = ledgerAndFieldAndLedgerIndex(field)
+//    l.editable(record, f)
+//  }
+//
+//  def updated(record: Int, field: Int, value:Any)(implicit txn: Txn) = {
+//    val (l, f, li) = ledgerAndFieldAndLedgerIndex(field)
+//    val newLedger = l.updated(record, f, value)
+//    //Optimisation for ledgers that just update mutable data
+//    //and return themselves - in that case we don't need to
+//    //make a new FieldCompositeLedger, since it would just
+//    //contain an equal list of ledgers anyway.
+//    if (newLedger == l) {
+//      this
+//    } else {
+//      val newList = ledgers.updated(li, newLedger)
+//      FieldCompositeLedger(newList)
+//    }
+//  }
+//
+//}
+//
+///**
+// * Calculated Box that will always hold a FieldCompositeListLedger made from the
+// * Ledgers in the List in a Box
+// */
+//object FieldCompositeLedgerVar {
+//  def apply[T](ledgers: Box[List[Ledger]])(implicit txn: Txn) = {
+//    val v = Box(FieldCompositeLedger(ledgers()))
+//    val ledgersReaction = txn.createReaction(implicit txnR => {
+//      //Note this will do nothing if list and view are the same, avoiding cycles
+//      v() = FieldCompositeLedger(ledgers())
+//    })
+//    v.retainReaction(ledgersReaction)
+//    v
+//  }
+//}
+//
 
 object DirectRecordView{
   def apply[T](fieldName: String)(implicit valueManifest:Manifest[T]) = new DirectRecordView(fieldName)(valueManifest)
 }
 
+
 class DirectRecordView[T](fieldName: String)(implicit valueManifest: Manifest[T]) extends RecordView[T] {
-  def editable(record: Int, field: Int, recordValue: T)(implicit txn: TxnR) = false
-  def apply(record: Int, field: Int, recordValue: T)(implicit txn: TxnR) = recordValue
-  def update(record: Int, field: Int, recordValue: T, fieldValue: Any)(implicit txn: Txn) {}
-  def fieldName(field: Int)(implicit txn: TxnR): String = fieldName
-  def fieldClass(field: Int)(implicit txn: TxnR): Class[_] = valueManifest.runtimeClass
-  def fieldCount()(implicit txn: TxnR) = 1
+  def editable(record: Int, field: Int, recordValue: T) = just(false)
+  def apply(record: Int, field: Int, recordValue: T) = just(recordValue)
+  def update(record: Int, field: Int, recordValue: T, fieldValue: Any) = just(())
+  def fieldName(field: Int) = just(fieldName)
+  def fieldClass(field: Int) = just(valueManifest.runtimeClass)
+  def fieldCount() = just(1)
 }
 
 /**
@@ -161,7 +164,7 @@ class DirectRecordView[T](fieldName: String)(implicit valueManifest: Manifest[T]
  * data item within a Txn. Also associates a name and a class via a Manifest
  */
 trait Lens[T, V] {
-  def apply(t: T)(implicit txn: TxnR): V
+  def apply(t: T): BoxScript[V]
   def name: String
   def valueManifest: Manifest[V]
 }
@@ -171,18 +174,18 @@ trait Lens[T, V] {
  * a Txn
  */
 trait MLens[T, V] extends Lens[T, V] {
-  def update(t: T, v: V)(implicit txn: Txn): T
+  def update(t: T, v: V): BoxScript[Unit]
 }
 
 /**
  * MLens based on a Box and an access closure
  */
 object MBoxLens {
-  def apply[T, V](name:String, access:(T=>Box[V]))(implicit valueManifest:Manifest[V]) = {
+  def apply[T, V](name: String, access: T=>Box[V])(implicit valueManifest:Manifest[V]) = {
     new MLensDefault[T, V](
       name,
-      (t, txn) => access(t).apply()(txn),
-      (t, v, txn) => access(t).update(v)(txn)
+      t => access(t).get(),
+      (t, v) => access(t).set(v)
     )(valueManifest)
   }
 }
@@ -191,40 +194,37 @@ object MBoxLens {
  * Lens based on a Box and an access closure
  */
 object BoxLens {
-  def apply[T, V](name:String, access:(T=>Box[V]))(implicit valueManifest:Manifest[V]) = {
+  def apply[T, V](name:String, access:(T => Box[V]))(implicit valueManifest:Manifest[V]) = {
     new LensDefault[T, V](
       name,
-      (t, txn) => access(t).apply()(txn)
+      t => access(t).get()
     )(valueManifest)
   }
 }
 
-class LensDefault[T, V](val name:String, val read:(T, TxnR)=>V)(implicit val valueManifest:Manifest[V]) extends Lens[T, V] {
-  def apply(t:T)(implicit txn: TxnR) = read(t, txn)
+class LensDefault[T, V](val name:String, val read: T => BoxScript[V])(implicit val valueManifest:Manifest[V]) extends Lens[T, V] {
+  def apply(t:T) = read(t)
 }
 
-class MLensDefault[T, V](val name:String, val read:(T, TxnR) => V, val write:(T, V, Txn) => Unit)(implicit val valueManifest:Manifest[V]) extends MLens[T, V] {
-  def apply(t:T)(implicit txn: TxnR) = read(t, txn)
-  def update(t:T, v:V)(implicit txn: Txn) = {
-    write(t, v, txn)
-    t
-  }
+class MLensDefault[T, V](val name:String, val read: T => BoxScript[V], val write: (T, V) => BoxScript[Unit])(implicit val valueManifest:Manifest[V]) extends MLens[T, V] {
+  def apply(t:T) = read(t)
+  def update(t:T, v:V) = write(t, v)
 }
 
 object LensRecordView {
-  def apply [T](lenses:Lens[T,_]*) = new LensRecordView[T](lenses:_*)
+  def apply[T](lenses: Lens[T,_]*) = new LensRecordView[T](lenses: _*)
 }
 
-class LensRecordView[T](lenses:Lens[T,_]*) extends RecordView[T] {
+class LensRecordView[T](lenses: Lens[T,_]*) extends RecordView[T] {
 
   //Note that in a RecordView with mutability, we would need to call Box methods,
   //but this view itself is immutable - the records may be mutable, but this is
   //irrelevant
 
-  override def editable(record:Int, field:Int, recordValue:T)(implicit txn: TxnR) = lenses(field).isInstanceOf[MLens[_,_]]
-  override def apply(record:Int, field:Int, recordValue:T)(implicit txn: TxnR) = lenses(field).apply(recordValue)
+  override def editable(record: Int, field: Int, recordValue: T) = just(lenses(field).isInstanceOf[MLens[_,_]])
+  override def apply(record: Int, field: Int, recordValue: T) = lenses(field).asInstanceOf[Lens[T, Any]].apply(recordValue)
 
-  override def update(record:Int, field:Int, recordValue:T, fieldValue:Any)(implicit txn: Txn) = {
+  override def update(record:Int, field:Int, recordValue:T, fieldValue:Any) = {
     lenses(field) match {
       case mLens:MLens[_,_] =>
         fieldValue match {
@@ -257,7 +257,7 @@ class LensRecordView[T](lenses:Lens[T,_]*) extends RecordView[T] {
     }
   }
 
-  private def tryUpdate(mLens:MLens[_,_], recordValue:T, fieldValue:Any, c:Class[_])(implicit txn: Txn) = {
+  private def tryUpdate(mLens:MLens[_,_], recordValue:T, fieldValue:Any, c:Class[_]) = {
     if (mLens.valueManifest.runtimeClass == c) {
       mLens.asInstanceOf[MLens[Any, Any]].update(recordValue, fieldValue)
     } else {
@@ -265,9 +265,9 @@ class LensRecordView[T](lenses:Lens[T,_]*) extends RecordView[T] {
     }
   }
 
-  override def fieldName(field:Int)(implicit txn: TxnR) = lenses(field).name
-  override def fieldClass(field:Int)(implicit txn: TxnR) = lenses(field).valueManifest.runtimeClass
-  override def fieldCount()(implicit txn: TxnR) = lenses.size
+  override def fieldName(field:Int) = just(lenses(field).name)
+  override def fieldClass(field:Int) = just(lenses(field).valueManifest.runtimeClass)
+  override def fieldCount() = just(lenses.size)
 
 }
 

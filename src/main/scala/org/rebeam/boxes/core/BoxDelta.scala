@@ -1,10 +1,9 @@
-package org.rebeam.boxes.core.free
+package org.rebeam.boxes.core
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import org.rebeam.boxes.core.Identifiable
-import org.rebeam.boxes.core.free.BoxTypes._
-import org.rebeam.boxes.core.util.{BiMultiMap, GCWatcher, RWLock, WeakHashSet}
+import BoxTypes._
+import util.{BiMultiMap, GCWatcher, RWLock, WeakHashSet}
 
 import scala.annotation.tailrec
 import scala.collection.immutable._

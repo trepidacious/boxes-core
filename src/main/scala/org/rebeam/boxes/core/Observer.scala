@@ -1,4 +1,4 @@
-package org.rebeam.boxes.core.free
+package org.rebeam.boxes.core
 
 trait Observer {
   def observe(r: Revision): Unit

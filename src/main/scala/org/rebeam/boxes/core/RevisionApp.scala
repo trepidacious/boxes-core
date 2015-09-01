@@ -1,6 +1,6 @@
-package org.rebeam.boxes.core.free
+package org.rebeam.boxes.core
 
-import org.rebeam.boxes.core.free.BoxUtils._
+import org.rebeam.boxes.core.BoxUtils._
 
 object RevisionApp extends App {
 

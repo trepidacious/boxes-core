@@ -1,6 +1,6 @@
-package org.rebeam.boxes.core.free
+package org.rebeam.boxes.core
 
-import org.rebeam.boxes.core.free.BoxTypes._
+import org.rebeam.boxes.core.BoxTypes._
 
 import scala.collection.immutable.{Map, Vector}
 

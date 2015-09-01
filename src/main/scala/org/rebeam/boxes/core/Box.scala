@@ -1,9 +1,8 @@
-package org.rebeam.boxes.core.free
+package org.rebeam.boxes.core
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import org.rebeam.boxes.core.Identifiable
-import org.rebeam.boxes.core.free.BoxTypes.BoxScript
+import BoxTypes._
 
 class Box[T](val id: Long) extends Identifiable {
 

@@ -1,117 +1,81 @@
 package org.rebeam.boxes.core.data
 
-import org.rebeam.boxes.core.{Txn, Box}
+import org.rebeam.boxes.core._
+import BoxTypes._
+import BoxUtils._
 
-import scala.collection.immutable.Seq
-
-trait ListIndex[T] {
-  val selected: Box[Option[T]]
-  val index: Box[Option[Int]]
-}
-
-private class ListIndexDefault[T](val selected: Box[Option[T]], val index: Box[Option[Int]]) extends ListIndex[T]
+case class ListIndex[T](selected: Box[Option[T]], index: Box[Option[Int]])
 
 object ListIndex {
-  
-  def apply[T](list: Box[_ <: Seq[T]], selectFirstByDefault: Boolean = true)(implicit txn: Txn) = {
-    val selected: Box[Option[T]] = Box(None)
-    val index: Box[Option[Int]] = Box(None)
-    
-    val r = txn.createReaction(implicit rt => {
-      val l = list()
-      val s = selected()
-      val i = index()
+  def apply[T](list: Box[_ <: Seq[T]], selectFirstByDefault: Boolean = true): BoxScript[ListIndex[T]] = for {
+    selected <- create(None: Option[T])
+    index <- create(None: Option[Int])
 
-      val cs = rt.changedSources
+    r <- createReaction(for {
+      l <- list()
+      s <- selected()
+      i <- index()
 
-      def useIndex() = {
-        i match {
-          case None => {
-//            println("No index, clearing selection")
-            default()
-          }
-          case Some(i) if i < 0 => {
-//            println("index < 0, using 0")
-            index() = Some(0)
-            selected() = Some(l(0))          
-          }
-          case Some(i) if i >= l.size => {
-//            println("index >= list size, using list size - 1")
-            index() = Some(l.size-1)
-            selected() = Some(l(l.size-1))          
-          }
-          case Some(i) => {
-//            println("index is in list, using it")
-            index() = Some(i)
-            selected() = Some(l(i))          
-          }
-        }
-      }
+      cs <- changedSources()
 
-      def clear() = {
-        index() = None
-        selected() = None        
-      }
-      
-      def consistent() = (i, s, l) match {
-        case (None, None, Nil) => true                    //Must select None in empty list
-        case (None, None, _) => !selectFirstByDefault     //In non-empty list, selecting None is ok iff we are not selecting first by default
-        case (Some(i), Some(s), _) if i >= 0 && i < l.size => s == l(i)
+      consistent = (i, s, l) match {
+        //Must select None in empty list
+        case (None, None, Nil)                              => true
+        //In non-empty list, selecting None is ok iff we are not selecting first by default
+        case (None, None, _)                                => !selectFirstByDefault
+        //If index is valid, then consistent if selected object is at index in list
+        case (Some(i), Some(s), _) if i >= 0 && i < l.size  => s == l(i)
+        //No consistent case applies
         case _ => false
       }
-      
-      def default() = {
-        if (!selectFirstByDefault || l.isEmpty) {
-          index() = None
-          selected() = None
-        } else {
-          index() = Some(0)
-          selected() = Some(l(0))
-        }
+
+      default = if (!selectFirstByDefault || l.isEmpty) {
+        (index() = None) andThen (selected() = None)
+      } else {
+        (index() = Some(0)) andThen (selected() = Some(l(0)))
       }
-      
-      //If we are already consistent, nothing to do
-      if (consistent) {
-//        println("Already consistent")
+
+      useIndex = i match {
+        case None => default
+        case Some(i) if i < 0       => (index() = Some(0)) andThen (selected() = Some(l(0)))
+        case Some(i) if i >= l.size => (index() = Some(l.size - 1)) andThen (selected() = Some(l(l.size - 1)))
+        case Some(i)                => (index() = Some(i)) andThen (selected() = Some(l(i)))
+      }
+
+      _ <- if (consistent) {
+        list()  //TODO this is just used as a noop, how should we do this?
+
       //If list is empty, no selection
       } else if (l.isEmpty) {
-//        println("Empty list, clearing")
-        clear()
-        
+        (index() = None) andThen (selected() = None)
+
       //If just the index has changed, it is authoritative
       } else if (cs == Set(index)) {
-//        println("Just index changed, using index " + i)
-        useIndex()
-        
+        useIndex
+
       //Otherwise try to use the selection
       } else {
-//        println("Trying selection")
-
         val newIndex = s.map(s => l.indexOf(s)).getOrElse(-1)
-        
+
         //Selection is still in list, update index
         if (newIndex > -1) {
-//          println("Selection is in list, using")
           index() = Some(newIndex)
-          
+
         //Selection is not in list, if just list has changed, use
         //index to look up new selection
         } else if (cs == Set(list)) {
-//          println("Selection not in list, using index " + i)
-          useIndex()
-          
+          useIndex
+
         //Otherwise just use default
         } else {
-//          println("Defaulting")
-          default()
+          default
         }
       }
-      
-    })
-    
-    selected.retainReaction(r)
-    index.retainReaction(r)
-    
-    new ListIndexDefault(selected, index): ListIndex[T]
-  }
+
+    } yield ())
+
+    _ <- selected.attachReaction(r)
+    _ <- index.attachReaction(r)
+
+  } yield ListIndex(selected, index)
 }

@@ -1,8 +1,8 @@
-package org.rebeam.boxes.core.free
+package org.rebeam.boxes.core
 
-import org.rebeam.boxes.core.free.BoxUtils._
-import org.rebeam.boxes.core.free.BoxTypes._
-import org.rebeam.boxes.core.free.reaction.{PathToBox, PathToOption, PathViaOption, Path}
+import org.rebeam.boxes.core.BoxUtils._
+import org.rebeam.boxes.core.BoxTypes._
+import org.rebeam.boxes.core.reaction.{PathToBox, PathToOption, PathViaOption, Path}
 
 import scalaz._
 import Scalaz._
