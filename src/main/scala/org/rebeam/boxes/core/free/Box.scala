@@ -3,6 +3,7 @@ package org.rebeam.boxes.core.free
 import java.util.concurrent.atomic.AtomicInteger
 
 import org.rebeam.boxes.core.Identifiable
+import org.rebeam.boxes.core.free.BoxTypes.BoxScript
 
 class Box[T](val id: Long) extends Identifiable {
 
@@ -41,6 +42,14 @@ class Box[T](val id: Long) extends Identifiable {
 
   def attachReaction(reaction: Reaction) = BoxDeltaF.attachReactionToBox(reaction, this)
   def detachReaction(reaction: Reaction) = BoxDeltaF.detachReactionFromBox(reaction, this)
+
+  def applyReaction(rScript: BoxScript[T]) = for {
+    r <- BoxUtils.createReaction(for {
+      t <- rScript
+      _ <- set(t)
+    } yield ())
+    _ <- this.attachReaction(r)
+  } yield r
 
 }
 
