@@ -35,4 +35,8 @@ object BoxUtils {
                                       //are not retained just by reading from or writing to boxes.
   } yield box
 
+  implicit class BoxScriptPlus[A](s: BoxScript[A]) {
+    final def andThen[B](f: => BoxScript[B]): BoxScript[B] = s flatMap (_ => f)
+  }
+
 }

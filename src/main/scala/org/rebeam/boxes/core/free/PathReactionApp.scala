@@ -31,11 +31,11 @@ object PathReactionApp extends App {
     _ <- b.friend() = Some(c)
   } yield ())
 
-//  val friendsFriend = atomic(PathToOption.apply[Person](for {
-//    f <- a.friend()
-//  } yield f.map(_.friend)))
+  val friendsFriend = atomic(Path(for {
+    f <- a.friend()
+  } yield f.map(_.friend)))
 
-  val friendsFriend = atomic(PathToOption.apply[Person](a.friend().map(_.map(_.friend))))
+//  val friendsFriend = atomic(Path(a.friend().map(_.map(_.friend))))
 
   println(atomic(for {
     f <- friendsFriend()
