@@ -153,7 +153,7 @@ object DirectRecordView{
 class DirectRecordView[T](fieldName: String)(implicit valueManifest: Manifest[T]) extends RecordView[T] {
   def editable(record: Int, field: Int, recordValue: T) = just(false)
   def apply(record: Int, field: Int, recordValue: T) = just(recordValue)
-  def update(record: Int, field: Int, recordValue: T, fieldValue: Any) = just(())
+  def update(record: Int, field: Int, recordValue: T, fieldValue: Any) = nothing
   def fieldName(field: Int) = just(fieldName)
   def fieldClass(field: Int) = just(valueManifest.runtimeClass)
   def fieldCount() = just(1)

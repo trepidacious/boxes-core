@@ -57,7 +57,7 @@ object ListIndices {
 
       //If we are already consistent, nothing to do
       _ <- if (consistent) {
-        list()  //TODO this is just used as a noop, how should we do this?
+        nothing
 
       //If list is empty, no selection
       } else if (lis.isEmpty) {

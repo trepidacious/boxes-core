@@ -42,8 +42,9 @@ object ListIndex {
         case Some(i)                => (index() = Some(i)) andThen (selected() = Some(l(i)))
       }
 
+      //If already consistent, nothing to do
       _ <- if (consistent) {
-        list()  //TODO this is just used as a noop, how should we do this?
+        nothing
 
       //If list is empty, no selection
       } else if (l.isEmpty) {
