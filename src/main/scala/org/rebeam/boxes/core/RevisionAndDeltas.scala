@@ -83,7 +83,7 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
 
   def create[T](t: T): (BoxDeltas, Box[T]) = {
     val box = Box[T]()
-    (BoxDeltas.empty.append(CreateBox(box)).append(WriteBox(box, t)), box)
+    (BoxDeltas.single(BoxCreated(box, t)), box)
   }
 
   private def _get[T](box: Box[T]): T = deltas.boxWrite(box).getOrElse(revision.valueOf(box).getOrElse(
@@ -93,25 +93,25 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
   def set[T](box: Box[T], t: T): (BoxDeltas, Box[T]) = {
     //We need to record the write to have reactions work properly etc., however the interpreter
     //is free to ignore writes to same value to optimise when they would make no difference
-    (BoxDeltas.single(WriteBox(box, t)), box)
+    (BoxDeltas.single(BoxWritten(box, t, _get(box))), box)
   }
 
   def get[T](box: Box[T]): (BoxDeltas, T) = {
     val v = _get(box)
-    (BoxDeltas.single(ReadBox(box)), v)
+    (BoxDeltas.single(BoxRead(box, v)), v)
   }
 
   def scriptForReactionId(rid: Long): Option[BoxScript[Unit]] = deltas.scriptForReactionId(rid).orElse(revision.scriptForReactionId(rid))
 
-  def observe(observer: Observer): BoxDeltas = BoxDeltas.single(Observe(observer))
-  def unobserve(observer: Observer): BoxDeltas = BoxDeltas.single(Unobserve(observer))
+  def observe(observer: Observer): BoxDeltas = BoxDeltas.single(Observed(observer))
+  def unobserve(observer: Observer): BoxDeltas = BoxDeltas.single(Unobserved(observer))
 
-  def attachReactionToBox[T](r: Reaction, b: Box[T]): BoxDeltas = BoxDeltas.single(AttachReactionToBox(r, b))
-  def detachReactionFromBox[T](r: Reaction, b: Box[T]): BoxDeltas = BoxDeltas.single(DetachReactionFromBox(r, b))
+  def attachReactionToBox[T](r: Reaction, b: Box[T]): BoxDeltas = BoxDeltas.single(ReactionAttachedToBox(r, b))
+  def detachReactionFromBox[T](r: Reaction, b: Box[T]): BoxDeltas = BoxDeltas.single(ReactionDetachedFromBox(r, b))
 
   def createReaction(action: BoxScript[Unit]): (BoxDeltas, Reaction) = {
     val reaction = Reaction()
-    (BoxDeltas.single(CreateReaction(reaction, action)), reaction)
+    (BoxDeltas.single(ReactionCreated(reaction, action)), reaction)
   }
 
   def reactionGraph: ReactionGraph = deltas.reactionGraph.getOrElse(revision.reactionGraph)
@@ -128,15 +128,15 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
   def appendScript[A](script: BoxScript[A], runReactions: Boolean = true, changedSources: Set[Box[_]] = Set.empty): (RevisionAndDeltas, A, BoxDeltas) = RevisionAndDeltas.appendScript[A](script, this, BoxDeltas.empty, runReactions, changedSources)
 
   def deltasWouldChange(newDeltas: BoxDeltas): Boolean = newDeltas.deltas.exists{
-    case WriteBox(b, t) => get(b) != t
-    case CreateReaction(_, _) => true
-    case CreateBox(_) => true
-    case Observe(_) => true
-    case Unobserve(_) => true
-    case ReadBox(_) => false
-    case UpdateReactionGraph(_) => false
-    case AttachReactionToBox(_, _) => false
-    case DetachReactionFromBox(_, _) => false
+    case BoxWritten(b, t, _) => get(b) != t
+    case ReactionCreated(_, _) => true
+    case BoxCreated(_, _) => true
+    case Observed(_) => true
+    case Unobserved(_) => true
+    case BoxRead(_, _) => false
+    case ReactionGraphUpdated(_) => false
+    case ReactionAttachedToBox(_, _) => false
+    case ReactionDetachedFromBox(_, _) => false
   }
 
   override def toString = "RevisionAndDeltas(" + revision.toString + "," + deltas + ")"

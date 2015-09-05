@@ -26,26 +26,29 @@ class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[
     //Remove boxes that have been GCed, then add new ones
     val prunedMap = deletes.foldLeft(map) { case (m, id) => m - id }
 
-    //Apply WriteBox deltas
-    val newMap = deltas.deltas.foldLeft(prunedMap) {
-      case (m, WriteBox(box, value)) =>
+    //Apply BoxWritten or BoxCreated deltas - we need to make sure values are in map
+    def mWithNewValue(m: Map[Long, BoxChange], box: Box[Any], value: Any) = {
         val newChange = new BoxChange(newIndex)
-        box.asInstanceOf[Box[Any]].addChange(newChange, value)
-        m.updated(box.id, newChange)
+        box.addChange(newChange, value)
+        m.updated(box.id, newChange)      
+    }
+    val newMap = deltas.deltas.foldLeft(prunedMap) {
+      case (m, BoxWritten(box, value, _)) => mWithNewValue(m, box, value)
+      case (m, BoxCreated(box, value)) => mWithNewValue(m, box, value)
       case (m, _) => m
     }
 
     //Remove reactions that have been GCed, then add new ones
     val prunedReactionMap = reactionDeletes.foldLeft(reactionMap) { case (m, id) => m - id }
     val newReactionMap = deltas.deltas.foldLeft(prunedReactionMap) {
-      case (m, CreateReaction(reaction, f)) => m.updated(reaction.id, f)
+      case (m, ReactionCreated(reaction, f)) => m.updated(reaction.id, f)
       case (m, _) => m
     }
 
     //Apply attach/detach deltas to update boxReactions
     val newBoxReactions = deltas.deltas.foldLeft(boxReactions){
-      case (br, AttachReactionToBox(r, b)) => br.updated(b.id, boxReactions.getOrElse(b.id, Set.empty) + r)
-      case (br, DetachReactionFromBox(r, b)) => br.updated(b.id, boxReactions.getOrElse(b.id, Set.empty) - r)
+      case (br, ReactionAttachedToBox(r, b)) => br.updated(b.id, boxReactions.getOrElse(b.id, Set.empty) + r)
+      case (br, ReactionDetachedFromBox(r, b)) => br.updated(b.id, boxReactions.getOrElse(b.id, Set.empty) - r)
       case (br, _) => br
     }
 
@@ -65,8 +68,8 @@ class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[
     //RevisionAndDeltas. Note that there is no conflict for reading/writing boxes that don't exist in this revision,
     //since they must be created in the delta
     val conflicts = rad.deltas.deltas.exists{
-      case ReadBox(box) => indexOf(box).exists(_ > start)
-      case WriteBox(box, _) => indexOf(box).exists(_ > start)
+      case BoxRead(box, _) => indexOf(box).exists(_ > start)
+      case BoxWritten(box, _, _) => indexOf(box).exists(_ > start)
       case _ => false
     }
 

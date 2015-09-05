@@ -12,7 +12,7 @@ trait BoxDeltas {
 
   def append(d: BoxDelta): BoxDeltas
 
-  /** Get the most recent write on a given box, if there is one */
+  /** Get the most recent write on a given box, if there is one, including the initial value of created boxes */
   def boxWrite[T](box: Box[T]): Option[T]
 
   def altersRevision: Boolean
@@ -27,17 +27,19 @@ trait BoxDeltas {
 private class BoxDeltasCachedWrites(val deltas: Vector[BoxDelta], writes: Map[Box[Any], Any], val reactionGraph: Option[ReactionGraph], val idToScriptMap: Map[Long, BoxScript[Unit]]) extends BoxDeltas {
 
   def append(d: BoxDeltas): BoxDeltas = {
-    //Produce new writes cache, updating entries according to any WriteBox deltas in appended BoxDeltas
+    //Produce new writes cache, updating entries according to any BoxWritten deltas in appended BoxDeltas
+    //Note that we also count creation as a write, so that we can retrieve the value
     val newWrites = d.deltas.foldLeft(writes)((writes, delta) => delta match {
-      case WriteBox(box, t) => writes.updated(box.asInstanceOf[Box[Any]], t)
+      case BoxCreated(box, t) => writes.updated(box, t)
+      case BoxWritten(box, t, o) => writes.updated(box, t)
       case _ => writes
     })
     val newReactionGraph = d.deltas.foldLeft(reactionGraph)((rg, delta) => delta match {
-      case UpdateReactionGraph(newGraph) => Some(newGraph)
+      case ReactionGraphUpdated(newGraph) => Some(newGraph)
       case _ => rg
     })
     val newIdToScript = d.deltas.foldLeft(idToScriptMap)((m, delta) => delta match {
-      case CreateReaction(reaction, script) => m.updated(reaction.id, script)
+      case ReactionCreated(reaction, script) => m.updated(reaction.id, script)
       case _ => m
     })
     new BoxDeltasCachedWrites(deltas ++ d.deltas, newWrites, newReactionGraph, newIdToScript)
@@ -46,15 +48,16 @@ private class BoxDeltasCachedWrites(val deltas: Vector[BoxDelta], writes: Map[Bo
   def append(d: BoxDelta): BoxDeltas = {
     //Produce new writes cache, updating entries according to any WriteBox deltas in appended BoxDeltas
     val newWrites = d match {
-      case WriteBox(box, t) => writes.updated(box, t)
+      case BoxCreated(box, t) => writes.updated(box, t)
+      case BoxWritten(box, t, o) => writes.updated(box, t)
       case _ => writes
     }
     val newReactionGraph = d match {
-      case UpdateReactionGraph(newGraph) => Some(newGraph)
+      case ReactionGraphUpdated(newGraph) => Some(newGraph)
       case _ => reactionGraph
     }
     val newIdToScript = d match {
-      case CreateReaction(reaction, script) => idToScriptMap.updated(reaction.id, script)
+      case ReactionCreated(reaction, script) => idToScriptMap.updated(reaction.id, script)
       case _ => idToScriptMap
     }
     new BoxDeltasCachedWrites(deltas ++ Vector(d), newWrites, newReactionGraph, newIdToScript)
@@ -63,7 +66,7 @@ private class BoxDeltasCachedWrites(val deltas: Vector[BoxDelta], writes: Map[Bo
   def boxWrite[T](box: Box[T]): Option[T] = writes.get(box.asInstanceOf[Box[Any]]).asInstanceOf[Option[T]]
 
   def altersRevision: Boolean = deltas.exists{
-    case ReadBox(_) => false
+    case BoxRead(_, _) => false
     case _ => true
   }
 

@@ -12,21 +12,18 @@ import Scalaz._
 import Free._
 
 //Describe the basic operations that can be applied to a Revision to produce
-//an udpated Revision. These are the valid operations of a "transaction".
+//an updated Revision. These are the valid operations of a "transaction".
 sealed trait BoxDelta
 
-/** Create and return a new Box[T] */
-case class CreateBox[T](box: Box[T]) extends BoxDelta
-/** Read and return contents of a Box[T] */
-case class ReadBox[T](box: Box[T]) extends BoxDelta
-case class WriteBox[T](box: Box[T], t: T) extends BoxDelta
-case class CreateReaction(reaction: Reaction, action: BoxScript[Unit]) extends BoxDelta
-case class Observe(observer: Observer) extends BoxDelta
-case class Unobserve(observer: Observer) extends BoxDelta
-case class UpdateReactionGraph(reactionGraph: ReactionGraph) extends BoxDelta
-case class AttachReactionToBox[T](r: Reaction, b: Box[T]) extends BoxDelta
-case class DetachReactionFromBox[T](r: Reaction, b: Box[T]) extends BoxDelta
-
+case class BoxCreated[T](box: Box[T], t: T) extends BoxDelta
+case class BoxRead[T](box: Box[T], t: T) extends BoxDelta
+case class BoxWritten[T](box: Box[T], now: T, was: T) extends BoxDelta
+case class ReactionCreated(reaction: Reaction, action: BoxScript[Unit]) extends BoxDelta
+case class Observed(observer: Observer) extends BoxDelta
+case class Unobserved(observer: Observer) extends BoxDelta
+case class ReactionGraphUpdated(reactionGraph: ReactionGraph) extends BoxDelta
+case class ReactionAttachedToBox[T](r: Reaction, b: Box[T]) extends BoxDelta
+case class ReactionDetachedFromBox[T](r: Reaction, b: Box[T]) extends BoxDelta
 
 //These cases form a Functor based on BoxDeltas that is suitable for use with Free, during normal transactions
 sealed trait BoxDeltaF[+Next]

@@ -19,7 +19,7 @@ object Reactor extends Logging {
   }
 
   def radWithReactionRemoved(rad: RevisionAndDeltas, rid: Long): RevisionAndDeltas =
-    rad.appendDeltas(BoxDeltas.single(UpdateReactionGraph(rad.reactionGraph.updatedForReactionId(rid, Set.empty, Set.empty))))
+    rad.appendDeltas(BoxDeltas.single(ReactionGraphUpdated(rad.reactionGraph.updatedForReactionId(rid, Set.empty, Set.empty))))
 
   def runReactionScriptToDeltas(rad: RevisionAndDeltas, rid: Long, changedSources: Set[Box[_]]): BoxDeltas = {
     val script = rad.scriptForReactionId(rid).getOrElse(throw new RuntimeException("Missing reaction for id " + rid))
@@ -34,18 +34,18 @@ object Reactor extends Logging {
 
     //Use the deltas to work out new sources/targets for the reaction
     val sourceBoxes = scriptDeltas.deltas.foldLeft(Set.empty[Long])((s, d) => d match {
-      case ReadBox(box) => s + box.id
+      case BoxRead(box, _) => s + box.id
       case _ => s
     })
     val targetBoxes = scriptDeltas.deltas.foldLeft(Set.empty[Long])((s, d) => d match {
-      case WriteBox(box, _) => s + box.id
+      case BoxWritten(box, _, _) => s + box.id
       case _ => s
     })
     val rg = rad2.reactionGraph.updatedForReactionId(rid, sourceBoxes, targetBoxes)
 
     //Add the reaction graph update to rad2, it reflects the state after applying the reaction, this
     //is our result
-    (rad2.appendDeltas(BoxDeltas.single(UpdateReactionGraph(rg))), scriptDeltas)
+    (rad2.appendDeltas(BoxDeltas.single(ReactionGraphUpdated(rg))), scriptDeltas)
   }
 
   def reactImpure(initialRad: RevisionAndDeltas, deltas: BoxDeltas): RevisionAndDeltas = {
@@ -58,8 +58,8 @@ object Reactor extends Logging {
 
     //Pend any newly created reactions, plus any reactions with the box as a source
     deltas.deltas.foreach{
-      case CreateReaction(reaction, action) => reactionsPending += reaction.id
-      case WriteBox(box, _) => {
+      case ReactionCreated(reaction, action) => reactionsPending += reaction.id
+      case BoxWritten(box, _, _) => {
         val sourcingReactions = finalRad.reactionGraph.reactionsSourcingBox(box.id)
         reactionsPending ++= sourcingReactions
         //Also add written box to changed sources for the reactions
@@ -110,7 +110,7 @@ object Reactor extends Logging {
         //Now also pend any reactions that have had sources changed by this reaction,
         //and add the written boxes to changed sources for that reaction
         reactionDeltas.deltas.foreach{
-          case WriteBox(box, _) =>
+          case BoxWritten(box, _, _) =>
             for (sourcingReaction <- finalRad.reactionGraph.reactionsSourcingBox(box.id) if (sourcingReaction != nextReaction)) {
               if (!reactionsPending.contains(sourcingReaction)) reactionsPending += sourcingReaction
               changedSourcesForReaction.addBinding(sourcingReaction, box)

@@ -50,10 +50,10 @@ object Shelf {
         //Watch new boxes and reactions, and add/remove observers as requested (new observers will see the updated revision
         //as their first)
         for (d <- rad.deltas.deltas) d match {
-          case CreateBox(box) => watcher.watch(Set(box))
-          case CreateReaction(reaction, _) => reactionWatcher.watch(Set(reaction))
-          case Observe(observer) => observers.add(observer)
-          case Unobserve(observer) => observers.remove(observer)
+          case BoxCreated(box, _) => watcher.watch(Set(box))
+          case ReactionCreated(reaction, _) => reactionWatcher.watch(Set(reaction))
+          case Observed(observer) => observers.add(observer)
+          case Unobserved(observer) => observers.remove(observer)
           case _ => ()
         }
 
