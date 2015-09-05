@@ -71,7 +71,7 @@ object BoxDeltaF {
   val functor: Functor[BoxDeltaF] = new Functor[BoxDeltaF] {
     override def map[A, B](bdf: BoxDeltaF[A])(f: (A) => B): BoxDeltaF[B] = bdf match {
       case CreateBoxDeltaF(t, toNext) => CreateBoxDeltaF(t, toNext andThen f) //toNext returns the next Free when called with t:T,
-      //then we call f on this next Free to sequence it after
+                                                                              //then we call f on this next Free to sequence it after
       case ReadBoxDeltaF(b, toNext) => ReadBoxDeltaF(b, toNext andThen f)
       case CreateReactionDeltaF(action, toNext) => CreateReactionDeltaF(action, toNext andThen f)
 
@@ -87,90 +87,127 @@ object BoxDeltaF {
     }
   }
 
-  def create[T](t: T)                     = liftF(CreateBoxDeltaF(t, identity[Box[T]]))(functor)
-  def set[T](box: Box[T], t: T)           = liftF(WriteBoxDeltaF(box, t, ()))(functor)
-  def get[T](box: Box[T])                 = liftF(ReadBoxDeltaF(box, identity[T]))(functor)
-  def observe(observer: Observer)         = liftF(ObserveDeltaF(observer, ()))(functor)
-  def unobserve(observer: Observer)       = liftF(UnobserveDeltaF(observer, ()))(functor)
-  def createReaction(action: BoxScript[Unit]) = liftF(CreateReactionDeltaF(action, identity[Reaction]))(functor)
-  def attachReactionToBox(r: Reaction, b: Box[_]) = liftF(AttachReactionToBoxF(r, b, ()))(functor)
-  def detachReactionFromBox(r: Reaction, b: Box[_]) = liftF(DetachReactionFromBoxF(r, b, ()))(functor)
-  def just[T](t: T)                       = liftF(JustF(t, identity: T => T))(functor)
-  val nothing                             = just(())
-  def changedSources()                    = liftF(ChangedSourcesF(identity))(functor)
+  def create[T](t: T): BoxScript[Box[T]] = 
+    liftF(CreateBoxDeltaF(t, identity[Box[T]]): BoxDeltaF[Box[T]])(functor)
+
+  def set[T](box: Box[T], t: T): BoxScript[Unit] = 
+    liftF(WriteBoxDeltaF(box, t, ()): BoxDeltaF[Unit])(functor)
+
+  def get[T](box: Box[T]): BoxScript[T] = 
+    liftF(ReadBoxDeltaF(box, identity[T]): BoxDeltaF[T])(functor)
+
+  def observe(observer: Observer): BoxScript[Unit] = 
+    liftF(ObserveDeltaF(observer, ()): BoxDeltaF[Unit])(functor)
+
+  def unobserve(observer: Observer): BoxScript[Unit] = 
+    liftF(UnobserveDeltaF(observer, ()): BoxDeltaF[Unit])(functor)
+
+  def createReaction(action: BoxScript[Unit]): BoxScript[Reaction] = 
+    liftF(CreateReactionDeltaF(action, identity[Reaction]): BoxDeltaF[Reaction])(functor)
+
+  def attachReactionToBox(r: Reaction, b: Box[_]): BoxScript[Unit] = 
+    liftF(AttachReactionToBoxF(r, b, ()): BoxDeltaF[Unit])(functor)
+
+  def detachReactionFromBox(r: Reaction, b: Box[_]): BoxScript[Unit] = 
+    liftF(DetachReactionFromBoxF(r, b, ()): BoxDeltaF[Unit])(functor)
+
+  def just[T](t: T): BoxScript[T] = 
+    liftF(JustF(t, identity: T => T): BoxDeltaF[T])(functor)
+
+  val nothing = just(())
+
+  def changedSources(): BoxScript[Set[Box[_]]] = 
+    liftF(ChangedSourcesF(identity): BoxDeltaF[Set[Box[_]]])(functor)
 
 }
 
-//object BoxReaderDeltaF {
-//  val boxReaderDeltaFunctor: Functor[BoxReaderDeltaF] = new Functor[BoxReaderDeltaF] {
-//    override def map[A, B](bdf: BoxReaderDeltaF[A])(f: (A) => B): BoxReaderDeltaF[B] = bdf match {
-//      case CreateBoxDeltaF(t, toNext) => CreateBoxDeltaF(t, toNext andThen f)
-//      case ReadBoxDeltaF(b, toNext) => ReadBoxDeltaF(b, toNext andThen f)
-//      case CreateReactionDeltaF(action, toNext) => CreateReactionDeltaF(action, toNext andThen f)
-//      case WriteBoxDeltaF(b, t, next) => WriteBoxDeltaF(b, t, f(next))
-//      case AttachReactionToBoxF(r, b, next) => AttachReactionToBoxF(r, b, f(next))
-//      case DetachReactionFromBoxF(r, b, next) => DetachReactionFromBoxF(r, b, f(next))
-//      case JustF(t, toNext) => JustF(t, toNext andThen f)
-//
-//      case PeekTokenF(toNext) => PeekTokenF(toNext andThen f)
-//      case PullTokenF(toNext) => PeekTokenF(toNext andThen f)
-//      //
-//      //      case PutTokenF(t, next) => PutTokenF(t, f(next))
-//      //
-//      case PutCachedF(id, thing, next) => PutCachedF(id, thing, f(next))
-//      case PutCachedBoxF(id, box, next) => PutCachedBoxF(id, box, f(next))
-//
-//      case GetCachedF(id, toNext) => GetCachedF(id, toNext andThen f)
-//      case GetCachedBoxF(id, toNext) => GetCachedBoxF(id, toNext andThen f)
-//    }
-//  }
-//
-//  def create[T](t: T)                       = liftF(CreateBoxDeltaF(t, identity[Box[T]]))(boxReaderDeltaFunctor)
-//  def set[T](box: Box[T], t: T)           = liftF(WriteBoxDeltaF(box, t, ()))(boxReaderDeltaFunctor)
-//  def get[T](box: Box[T])                 = liftF(ReadBoxDeltaF(box, identity[T]))(boxReaderDeltaFunctor)
-//  def createReaction(action: BoxScript[Unit]) = liftF(CreateReactionDeltaF(action, identity[Reaction]))(boxReaderDeltaFunctor)
-//  def attachReactionToBox(r: Reaction, b: Box[_]) = liftF(AttachReactionToBoxF(r, b, ()))(boxReaderDeltaFunctor)
-//  def detachReactionFromBox(r: Reaction, b: Box[_]) = liftF(DetachReactionFromBoxF(r, b, ()))(boxReaderDeltaFunctor)
-//  def just[T](t: T)                       = liftF(JustF(t, identity: T => T))(boxReaderDeltaFunctor)
-//  val nothing                             = just(())
-//
-//  def peek()                              = liftF(PeekTokenF(identity[Token]))(boxReaderDeltaFunctor)
-//  def pull()                              = liftF(PullTokenF(identity[Token]))(boxReaderDeltaFunctor)
-//
-//  def getCached(id: Long)                 = liftF(GetCachedF(id, identity[Any]))(boxReaderDeltaFunctor)
-//  def putCached(id: Long, thing: Any)     = liftF(PutCachedF(id, thing, ()))(boxReaderDeltaFunctor)
-//
-//  def getCachedBox(id: Long)                 = liftF(GetCachedBoxF(id, identity[Box[Any]]))(boxReaderDeltaFunctor)
-//  def putCachedBox(id: Long, box: Box[Any])  = liftF(PutCachedBoxF(id, box, ()))(boxReaderDeltaFunctor)
-//}
-//
-//object BoxWriterDeltaF {
-//  val functor: Functor[BoxWriterDeltaF] = new Functor[BoxWriterDeltaF] {
-//    override def map[A, B](bdf: BoxWriterDeltaF[A])(f: (A) => B): BoxWriterDeltaF[B] = bdf match {
-//      case ReadBoxDeltaF(b, toNext) => ReadBoxDeltaF(b, toNext andThen f)
-//      case JustF(t, toNext) => JustF(t, toNext andThen f)
-//
-//      case PutTokenF(t, next) => PutTokenF(t, f(next))
-//
-//      case CacheF(t, toNext) => CacheF(t, toNext andThen f)
-//      case CacheBoxF(box, toNext) => CacheF(box, toNext andThen f)
-//    }
-//  }
-//}
+object BoxReaderDeltaF {
+  val boxReaderDeltaFunctor: Functor[BoxReaderDeltaF] = new Functor[BoxReaderDeltaF] {
+    override def map[A, B](bdf: BoxReaderDeltaF[A])(f: (A) => B): BoxReaderDeltaF[B] = bdf match {
+      case CreateBoxDeltaF(t, toNext) => CreateBoxDeltaF(t, toNext andThen f)
+      case ReadBoxDeltaF(b, toNext) => ReadBoxDeltaF(b, toNext andThen f)
+      case CreateReactionDeltaF(action, toNext) => CreateReactionDeltaF(action, toNext andThen f)
+      case WriteBoxDeltaF(b, t, next) => WriteBoxDeltaF(b, t, f(next))
+      case AttachReactionToBoxF(r, b, next) => AttachReactionToBoxF(r, b, f(next))
+      case DetachReactionFromBoxF(r, b, next) => DetachReactionFromBoxF(r, b, f(next))
+      case JustF(t, toNext) => JustF(t, toNext andThen f)
 
-////Another functor with a restricted set of operations suitable for use in reactions
-//sealed trait BoxReactionDeltaF[+Next]
-//case class ReadBoxReactionDeltaF[Next, T](b: Box[T], toNext: T => Next) extends BoxReactionDeltaF[Next]
-//case class WriteBoxReactionDeltaF[Next, T](b: Box[T], t: T, next: Next) extends BoxReactionDeltaF[Next]
-//
-//object BoxReactionDeltaF {
-//  implicit val functor: Functor[BoxReactionDeltaF] = new Functor[BoxReactionDeltaF] {
-//    override def map[A, B](bdf: BoxReactionDeltaF[A])(f: (A) => B): BoxReactionDeltaF[B] = bdf match {
-//      case ReadBoxReactionDeltaF(b, toNext) => ReadBoxReactionDeltaF(b, toNext andThen f)
-//      case WriteBoxReactionDeltaF(b, t, next) => WriteBoxReactionDeltaF(b, t, f(next))
-//    }
-//  }
-//
-//  def set[T](box: Box[T], t: T)           = liftF(WriteBoxReactionDeltaF(box, t, ()))
-//  def get[T](box: Box[T])                 = liftF(ReadBoxReactionDeltaF(box, identity: T => T))
-//}
+      case PeekTokenF(toNext) => PeekTokenF(toNext andThen f)
+      case PullTokenF(toNext) => PeekTokenF(toNext andThen f)
+
+      case PutCachedF(id, thing, next) => PutCachedF(id, thing, f(next))
+      case PutCachedBoxF(id, box, next) => PutCachedBoxF(id, box, f(next))
+
+      case GetCachedF(id, toNext) => GetCachedF(id, toNext andThen f)
+      case GetCachedBoxF(id, toNext) => GetCachedBoxF(id, toNext andThen f)
+    }
+  }
+
+  def create[T](t: T): BoxReaderScript[Box[T]]                       
+    = liftF(CreateBoxDeltaF(t, identity[Box[T]]): BoxReaderDeltaF[Box[T]])(boxReaderDeltaFunctor)
+
+  def set[T](box: Box[T], t: T): BoxReaderScript[Unit]
+    = liftF(WriteBoxDeltaF(box, t, ()): BoxReaderDeltaF[Unit])(boxReaderDeltaFunctor)
+
+  def get[T](box: Box[T]): BoxReaderScript[T]
+    = liftF(ReadBoxDeltaF(box, identity[T]): BoxReaderDeltaF[T])(boxReaderDeltaFunctor)
+
+  def createReaction(action: BoxScript[Unit]): BoxReaderScript[Reaction] 
+    = liftF(CreateReactionDeltaF(action, identity[Reaction]): BoxReaderDeltaF[Reaction])(boxReaderDeltaFunctor)
+
+  def attachReactionToBox(r: Reaction, b: Box[_]): BoxReaderScript[Unit] 
+    = liftF(AttachReactionToBoxF(r, b, ()): BoxReaderDeltaF[Unit])(boxReaderDeltaFunctor)
+
+  def detachReactionFromBox(r: Reaction, b: Box[_]): BoxReaderScript[Unit] 
+    = liftF(DetachReactionFromBoxF(r, b, ()): BoxReaderDeltaF[Unit])(boxReaderDeltaFunctor)
+
+  def just[T](t: T): BoxReaderScript[T]
+    = liftF(JustF(t, identity: T => T): BoxReaderDeltaF[T])(boxReaderDeltaFunctor)
+
+  val nothing = just(())
+
+  def peek(): BoxReaderScript[Token] 
+    = liftF(PeekTokenF(identity[Token]): BoxReaderDeltaF[Token])(boxReaderDeltaFunctor)
+  def pull(): BoxReaderScript[Token]
+    = liftF(PullTokenF(identity[Token]): BoxReaderDeltaF[Token])(boxReaderDeltaFunctor)
+
+  def getCached(id: Long): BoxReaderScript[Any]
+    = liftF(GetCachedF(id, identity[Any]): BoxReaderDeltaF[Any])(boxReaderDeltaFunctor)
+  def putCached(id: Long, thing: Any): BoxReaderScript[Unit]
+    = liftF(PutCachedF(id, thing, ()): BoxReaderDeltaF[Unit])(boxReaderDeltaFunctor)
+
+  def getCachedBox(id: Long): BoxReaderScript[Box[Any]]
+    = liftF(GetCachedBoxF(id, identity[Box[Any]]): BoxReaderDeltaF[Box[Any]])(boxReaderDeltaFunctor)
+  def putCachedBox(id: Long, box: Box[Any]): BoxReaderScript[Unit] 
+    = liftF(PutCachedBoxF(id, box, ()): BoxReaderDeltaF[Unit])(boxReaderDeltaFunctor)
+}
+
+object BoxWriterDeltaF {
+  val boxWriterDeltaFunctor: Functor[BoxWriterDeltaF] = new Functor[BoxWriterDeltaF] {
+    override def map[A, B](bdf: BoxWriterDeltaF[A])(f: (A) => B): BoxWriterDeltaF[B] = bdf match {
+      case ReadBoxDeltaF(b, toNext) => ReadBoxDeltaF(b, toNext andThen f)
+      case JustF(t, toNext) => JustF(t, toNext andThen f)
+
+      case PutTokenF(t, next) => PutTokenF(t, f(next))
+
+      case CacheF(t, toNext) => CacheF(t, toNext andThen f)
+      case CacheBoxF(box, toNext) => CacheF(box, toNext andThen f)
+    }
+  }
+
+  def get[T](box: Box[T]): BoxWriterScript[T]
+    = liftF(ReadBoxDeltaF(box, identity[T]): BoxWriterDeltaF[T])(boxWriterDeltaFunctor)
+
+  def just[T](t: T): BoxWriterScript[T]
+    = liftF(JustF(t, identity: T => T): BoxWriterDeltaF[T])(boxWriterDeltaFunctor)
+
+  def put(t: Token): BoxWriterScript[Unit]
+    = liftF(PutTokenF(t, ()): BoxWriterDeltaF[Unit])(boxWriterDeltaFunctor)
+
+  def cache(thing: Any): BoxWriterScript[CacheResult]
+    = liftF(CacheF(thing, identity[CacheResult]): BoxWriterDeltaF[CacheResult])(boxWriterDeltaFunctor)
+
+  def putCached(box: Box[Any]): BoxWriterScript[CacheResult]
+    = liftF(CacheBoxF(box, identity[CacheResult]): BoxWriterDeltaF[CacheResult])(boxWriterDeltaFunctor)
+
+}
