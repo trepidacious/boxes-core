@@ -5,6 +5,7 @@ import org.rebeam.boxes.core.BoxTypes._
 import scala.annotation.tailrec
 import scala.collection.immutable.Set
 import scalaz.{\/-, -\/}
+import BoxDelta._
 
 object RevisionAndDeltas {
   /**

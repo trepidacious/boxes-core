@@ -4,6 +4,7 @@ import BoxTypes._
 import util.{WeakHashSet, GCWatcher, RWLock}
 
 import scala.collection.immutable.{Range, Map}
+import BoxDelta._
 
 object Shelf {
 

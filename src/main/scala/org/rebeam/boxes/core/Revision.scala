@@ -3,6 +3,7 @@ package org.rebeam.boxes.core
 import scala.collection.immutable._
 
 import BoxTypes._
+import BoxDelta._
 
 class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[Long, BoxScript[Unit]], val reactionGraph: ReactionGraph, val boxReactions: Map[Long, Set[Reaction]]) {
 

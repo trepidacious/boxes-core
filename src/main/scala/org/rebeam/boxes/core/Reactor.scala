@@ -3,6 +3,7 @@ package org.rebeam.boxes.core
 import grizzled.slf4j.Logging
 
 import scala.collection.immutable.Set
+import BoxDelta._
 
 object Reactor extends Logging {
 

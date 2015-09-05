@@ -1,8 +1,10 @@
 package org.rebeam.boxes.core
 
 import org.rebeam.boxes.core.BoxTypes._
+import BoxDelta._
 
 import scala.collection.immutable.{Map, Vector}
+
 
 /** A sequence of BoxDelta instances in order applied, plus append and a potentially faster way of finding the most recent write on a given box */
 trait BoxDeltas {
