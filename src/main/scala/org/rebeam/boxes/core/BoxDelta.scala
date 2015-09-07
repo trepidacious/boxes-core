@@ -2,6 +2,8 @@ package org.rebeam.boxes.core
 
 import java.util.concurrent.atomic.AtomicInteger
 
+import org.rebeam.boxes.persistence._
+
 import BoxTypes._
 import util.{BiMultiMap, GCWatcher, RWLock, WeakHashSet}
 
@@ -59,13 +61,21 @@ case class GetCachedF[Next](id: Long, toNext: Any => Next) extends BoxReaderDelt
 case class PutCachedF[Next](id: Long, thing: Any, next: Next) extends BoxReaderDeltaF[Next]
 
 case class GetCachedBoxF[Next](id: Long, toNext: Box[Any] => Next) extends BoxReaderDeltaF[Next]
-case class PutCachedBoxF[Next](id: Long, box: Box[Any], next: Next) extends BoxReaderDeltaF[Next]
+case class PutCachedBoxF[Next, T](id: Long, box: Box[T], next: Next) extends BoxReaderDeltaF[Next]
+
+//FIXME note this is possibly not necessary in the long term, however it's fairly easy to implement, 
+//and allows for use cases like Node reading, where we want to run a BoxScript to build a default instance
+//within a BoxReaderScript. We could use a BoxReaderScript for the default, but then we can't use it in normal
+//transactions.
+//If we could compose capabilities (e.g. as in http://functionaltalks.org/2014/11/23/runar-oli-bjarnason-free-monad/)
+//we might not need this.
+case class EmbedBoxScript[Next, T](script: BoxScript[T], toNext: T => Next) extends BoxReaderDeltaF[Next]
 
 //Cases only usable for persistence - writer (Box -> Tokens)
 case class PutTokenF[Next](t: Token, next: Next) extends BoxWriterDeltaF[Next]
 
 case class CacheF[Next](t: Any, toNext: CacheResult => Next) extends BoxWriterDeltaF[Next]
-case class CacheBoxF[Next](box: Box[Any], toNext: CacheResult => Next) extends BoxWriterDeltaF[Next]
+case class CacheBoxF[Next, T](box: Box[T], toNext: CacheResult => Next) extends BoxWriterDeltaF[Next]
 
 object BoxDeltaF {
   val functor: Functor[BoxDeltaF] = new Functor[BoxDeltaF] {
@@ -140,6 +150,8 @@ object BoxReaderDeltaF {
 
       case GetCachedF(id, toNext) => GetCachedF(id, toNext andThen f)
       case GetCachedBoxF(id, toNext) => GetCachedBoxF(id, toNext andThen f)
+
+      case EmbedBoxScript(script, toNext) => EmbedBoxScript(script, toNext andThen f)
     }
   }
 
@@ -166,10 +178,70 @@ object BoxReaderDeltaF {
 
   val nothing = just(())
 
-  def peek(): BoxReaderScript[Token] 
+  val peek: BoxReaderScript[Token] 
     = liftF(PeekTokenF(identity[Token]): BoxReaderDeltaF[Token])(boxReaderDeltaFunctor)
-  def pull(): BoxReaderScript[Token]
+  val pull: BoxReaderScript[Token]
     = liftF(PullTokenF(identity[Token]): BoxReaderDeltaF[Token])(boxReaderDeltaFunctor)
+
+  @throws [IncorrectTokenException]
+  def pullExpected(expected: Token) = pull map {
+    case actual if actual == expected => actual
+    case actual => throw new IncorrectTokenException("Expected " + expected + " but got " + actual)
+  }
+
+  @throws [IncorrectTokenException]
+  def pullFiltered(filter: Token => Boolean, message: String = "as expected") = pull map {
+    case actual if filter(actual) => actual
+    case actual => throw new IncorrectTokenException("Got token " + actual + ", not " + message)
+  }
+
+  @throws [IncorrectTokenException]
+  val pullBoolean: BoxReaderScript[Boolean] = pull map {
+    case BooleanToken(s) => s
+    case t => throw new IncorrectTokenException("Expected a BooleanToken, got " + t)
+  }
+
+  @throws [IncorrectTokenException]
+  val pullInt: BoxReaderScript[Int] = pull map {
+    case IntToken(s) => s
+    case t => throw new IncorrectTokenException("Expected an IntToken, got " + t)
+  }
+
+  @throws [IncorrectTokenException]
+  val pullLong: BoxReaderScript[Long] = pull map {
+    case LongToken(s) => s
+    case t => throw new IncorrectTokenException("Expected a LongToken, got " + t)
+  }
+
+  @throws [IncorrectTokenException]
+  val pullFloat: BoxReaderScript[Float] = pull map {
+    case FloatToken(s) => s
+    case t => throw new IncorrectTokenException("Expected a FloatToken, got " + t)
+  }
+
+  @throws [IncorrectTokenException]
+  val pullDouble: BoxReaderScript[Double] = pull map {
+    case DoubleToken(s) => s
+    case t => throw new IncorrectTokenException("Expected a DoubleToken, got " + t)
+  }
+
+  @throws [IncorrectTokenException]
+  val pullBigInt: BoxReaderScript[BigInt] = pull map {
+    case BigIntToken(s) => s
+    case t => throw new IncorrectTokenException("Expected a BigIntToken, got " + t)
+  }
+
+  @throws [IncorrectTokenException]
+  val pullBigDecimal: BoxReaderScript[BigDecimal] = pull map {
+    case BigDecimalToken(s) => s
+    case t => throw new IncorrectTokenException("Expected a BigDecimalToken, got " + t)
+  }
+
+  @throws [IncorrectTokenException]
+  val pullString: BoxReaderScript[String] = pull map {
+    case StringToken(s) => s
+    case t => throw new IncorrectTokenException("Expected a StringToken, got " + t)
+  }
 
   def getCached(id: Long): BoxReaderScript[Any]
     = liftF(GetCachedF(id, identity[Any]): BoxReaderDeltaF[Any])(boxReaderDeltaFunctor)
@@ -178,8 +250,11 @@ object BoxReaderDeltaF {
 
   def getCachedBox(id: Long): BoxReaderScript[Box[Any]]
     = liftF(GetCachedBoxF(id, identity[Box[Any]]): BoxReaderDeltaF[Box[Any]])(boxReaderDeltaFunctor)
-  def putCachedBox(id: Long, box: Box[Any]): BoxReaderScript[Unit] 
+  def putCachedBox[T](id: Long, box: Box[T]): BoxReaderScript[Unit] 
     = liftF(PutCachedBoxF(id, box, ()): BoxReaderDeltaF[Unit])(boxReaderDeltaFunctor)
+
+  def embedBoxScript[T](script: BoxScript[T]): BoxReaderScript[T]
+    = liftF(EmbedBoxScript(script, identity[T]))(boxReaderDeltaFunctor)
 }
 
 object BoxWriterDeltaF {
@@ -207,7 +282,9 @@ object BoxWriterDeltaF {
   def cache(thing: Any): BoxWriterScript[CacheResult]
     = liftF(CacheF(thing, identity[CacheResult]): BoxWriterDeltaF[CacheResult])(boxWriterDeltaFunctor)
 
-  def putCached(box: Box[Any]): BoxWriterScript[CacheResult]
+  def cacheBox[T](box: Box[T]): BoxWriterScript[CacheResult]
     = liftF(CacheBoxF(box, identity[CacheResult]): BoxWriterDeltaF[CacheResult])(boxWriterDeltaFunctor)
+
+  val nothing = just(())
 
 }

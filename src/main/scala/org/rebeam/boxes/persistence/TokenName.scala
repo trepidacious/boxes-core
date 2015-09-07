@@ -1,4 +1,4 @@
-package org.rebeam.boxes.core
+package org.rebeam.boxes.persistence
 
 sealed trait TokenName
 

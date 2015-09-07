@@ -1,4 +1,4 @@
-package org.rebeam.boxes.core
+package org.rebeam.boxes.persistence
 
 /**
  * A link, either empty, or indicating that an object can be linked to (referenced), or indicating
