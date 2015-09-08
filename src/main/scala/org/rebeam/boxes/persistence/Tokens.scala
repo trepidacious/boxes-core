@@ -35,9 +35,9 @@ case object CloseDict extends Token
  * Start a Box. If link is LinkEmpty or LinkId then this token must be followed
  * by an encoded value. If link is LinkRef then this box is the same Box as the referenced
  * box.
- * Note that the link ids used are unique only for Boxes within one Shelf, since they are
+ * Note that the link ids used are unique only for Boxes within one Shelf, since they may be
  * the Box.id() values of the original serialised Box. Note that they may conflict with link ids
- * used for other types.
+ * used for other types, but are distinguished by being in BoxTokens.
  * @param link  The link for this box, defaults to LinkEmpty.
  */
 case class BoxToken(link: Link = LinkEmpty) extends Token
