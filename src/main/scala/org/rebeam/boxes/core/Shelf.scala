@@ -47,10 +47,9 @@ object Shelf {
     commit(RevisionAndDeltas(baseRevision, finalRad.deltas)).map((_, result))    
   }
 
-  def runReaderOrException[A](s: BoxReaderScript[A], reader: TokenReader): A = runReader(s, reader) match {
-    case Some((_, t)) => t
-    case None => throw new RuntimeException("Shelf.runReaderOrException failed - should not occur for valid tokens and formats")
-  }
+  def runReaderOrException[A](s: BoxReaderScript[A], reader: TokenReader): A = runReader(s, reader) map (_._2) getOrElse (
+    throw new RuntimeException("Shelf.runReaderOrException failed - should not occur for valid tokens and formats")
+  )
 
   def runWriter[A](s: BoxWriterScript[A], writer: TokenWriter): A = BoxWriterScript.run(s, currentRevision, writer)._1
 

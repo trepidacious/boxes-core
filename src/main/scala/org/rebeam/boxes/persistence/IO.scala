@@ -1,5 +1,6 @@
 package org.rebeam.boxes.persistence
 
+import org.rebeam.boxes.core._
 import org.rebeam.boxes.core.BoxTypes._
 import java.io.{InputStream, OutputStream}
 
@@ -17,22 +18,24 @@ trait ReaderWriterFactory {
 
 class IO(val factory: ReaderWriterFactory) {
 
-  // def write[T: Writes](t: T, output: OutputStream) = {
-  //   val target = factory.writer(output)
-  //   implicitly[Writes[T]].write(t)
-  //   target.close()
-  // }
+  def write[T: Writes](t: T, output: OutputStream) = {
+    val script = implicitly[Writes[T]].write(t)
+    val writer = factory.writer(output)
+    try {
+      Shelf.runWriter(script, writer)
+    } finally {
+      writer.close()
+    }
+  }
 
-  // def read[T: Reads](input:InputStream)(implicit txn: Txn) = {
-  //   val source = factory.reader(input)
-  //   val context = ReadContext(source, txn)
-  //   val t = implicitly[Reads[T]].read(context)
-  //   source.close()
-  //   t
-  // }
-
-  // def writeNow[T: Writes](t: T, output: OutputStream)(implicit shelf: Shelf) = shelf.read(implicit txn => write(t, output))
-
-  // def readNow[T: Reads](input:InputStream)(implicit shelf: Shelf) = shelf.transact(implicit txn => read(input), ReactionBeforeCommit)
+  def read[T: Reads](input:InputStream) = {
+    val script = implicitly[Reads[T]].read
+    val reader = factory.reader(input)
+    try {
+      Shelf.runReaderOrException(script, reader)
+    } finally {
+      reader.close()
+    }
+  }
 
 }
