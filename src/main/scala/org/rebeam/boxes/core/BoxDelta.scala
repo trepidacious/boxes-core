@@ -57,6 +57,15 @@ case class ChangedSourcesF[Next, T](next: Set[Box[_]] => Next) extends BoxDeltaF
 case class PeekTokenF[Next](toNext: Token => Next) extends BoxReaderDeltaF[Next]
 case class PullTokenF[Next](toNext: Token => Next) extends BoxReaderDeltaF[Next]
 
+case class PullBooleanF[Next](toNext: Boolean => Next) extends BoxReaderDeltaF[Next]
+case class PullIntF[Next](toNext: Int => Next) extends BoxReaderDeltaF[Next]
+case class PullLongF[Next](toNext: Long => Next) extends BoxReaderDeltaF[Next]
+case class PullFloatF[Next](toNext: Float => Next) extends BoxReaderDeltaF[Next]
+case class PullDoubleF[Next](toNext: Double => Next) extends BoxReaderDeltaF[Next]
+case class PullBigIntF[Next](toNext: BigInt => Next) extends BoxReaderDeltaF[Next]
+case class PullBigDecimalF[Next](toNext: BigDecimal => Next) extends BoxReaderDeltaF[Next]
+case class PullStringF[Next](toNext: String => Next) extends BoxReaderDeltaF[Next]
+
 case class GetCachedF[Next](id: Long, toNext: Any => Next) extends BoxReaderDeltaF[Next]
 case class PutCachedF[Next](id: Long, thing: Any, next: Next) extends BoxReaderDeltaF[Next]
 
@@ -143,7 +152,16 @@ object BoxReaderDeltaF {
       case JustF(t, toNext) => JustF(t, toNext andThen f)
 
       case PeekTokenF(toNext) => PeekTokenF(toNext andThen f)
-      case PullTokenF(toNext) => PeekTokenF(toNext andThen f)
+      case PullTokenF(toNext) => PullTokenF(toNext andThen f)
+
+      case PullBooleanF(toNext) => PullBooleanF(toNext andThen f)
+      case PullIntF(toNext) => PullIntF(toNext andThen f)
+      case PullLongF(toNext) => PullLongF(toNext andThen f)
+      case PullFloatF(toNext) => PullFloatF(toNext andThen f)
+      case PullDoubleF(toNext) => PullDoubleF(toNext andThen f)
+      case PullBigIntF(toNext) => PullBigIntF(toNext andThen f)
+      case PullBigDecimalF(toNext) => PullBigDecimalF(toNext andThen f)
+      case PullStringF(toNext) => PullStringF(toNext andThen f)
 
       case PutCachedF(id, thing, next) => PutCachedF(id, thing, f(next))
       case PutCachedBoxF(id, box, next) => PutCachedBoxF(id, box, f(next))
@@ -183,6 +201,23 @@ object BoxReaderDeltaF {
   val pull: BoxReaderScript[Token]
     = liftF(PullTokenF(identity[Token]): BoxReaderDeltaF[Token])(boxReaderDeltaFunctor)
 
+  val pullBoolean: BoxReaderScript[Boolean]
+    = liftF(PullBooleanF(identity[Boolean]): BoxReaderDeltaF[Boolean])(boxReaderDeltaFunctor)
+  val pullInt: BoxReaderScript[Int]
+    = liftF(PullIntF(identity[Int]): BoxReaderDeltaF[Int])(boxReaderDeltaFunctor)
+  val pullLong: BoxReaderScript[Long]
+    = liftF(PullLongF(identity[Long]): BoxReaderDeltaF[Long])(boxReaderDeltaFunctor)
+  val pullFloat: BoxReaderScript[Float]
+    = liftF(PullFloatF(identity[Float]): BoxReaderDeltaF[Float])(boxReaderDeltaFunctor)
+  val pullDouble: BoxReaderScript[Double]
+    = liftF(PullDoubleF(identity[Double]): BoxReaderDeltaF[Double])(boxReaderDeltaFunctor)
+  val pullBigInt: BoxReaderScript[BigInt]
+    = liftF(PullBigIntF(identity[BigInt]): BoxReaderDeltaF[BigInt])(boxReaderDeltaFunctor)
+  val pullBigDecimal: BoxReaderScript[BigDecimal]
+    = liftF(PullBigDecimalF(identity[BigDecimal]): BoxReaderDeltaF[BigDecimal])(boxReaderDeltaFunctor)
+  val pullString: BoxReaderScript[String]
+    = liftF(PullStringF(identity[String]): BoxReaderDeltaF[String])(boxReaderDeltaFunctor)
+
   @throws [IncorrectTokenException]
   def pullExpected(expected: Token) = pull map {
     case actual if actual == expected => actual
@@ -193,54 +228,6 @@ object BoxReaderDeltaF {
   def pullFiltered(filter: Token => Boolean, message: String = "as expected") = pull map {
     case actual if filter(actual) => actual
     case actual => throw new IncorrectTokenException("Got token " + actual + ", not " + message)
-  }
-
-  @throws [IncorrectTokenException]
-  val pullBoolean: BoxReaderScript[Boolean] = pull map {
-    case BooleanToken(s) => s
-    case t => throw new IncorrectTokenException("Expected a BooleanToken, got " + t)
-  }
-
-  @throws [IncorrectTokenException]
-  val pullInt: BoxReaderScript[Int] = pull map {
-    case IntToken(s) => s
-    case t => throw new IncorrectTokenException("Expected an IntToken, got " + t)
-  }
-
-  @throws [IncorrectTokenException]
-  val pullLong: BoxReaderScript[Long] = pull map {
-    case LongToken(s) => s
-    case t => throw new IncorrectTokenException("Expected a LongToken, got " + t)
-  }
-
-  @throws [IncorrectTokenException]
-  val pullFloat: BoxReaderScript[Float] = pull map {
-    case FloatToken(s) => s
-    case t => throw new IncorrectTokenException("Expected a FloatToken, got " + t)
-  }
-
-  @throws [IncorrectTokenException]
-  val pullDouble: BoxReaderScript[Double] = pull map {
-    case DoubleToken(s) => s
-    case t => throw new IncorrectTokenException("Expected a DoubleToken, got " + t)
-  }
-
-  @throws [IncorrectTokenException]
-  val pullBigInt: BoxReaderScript[BigInt] = pull map {
-    case BigIntToken(s) => s
-    case t => throw new IncorrectTokenException("Expected a BigIntToken, got " + t)
-  }
-
-  @throws [IncorrectTokenException]
-  val pullBigDecimal: BoxReaderScript[BigDecimal] = pull map {
-    case BigDecimalToken(s) => s
-    case t => throw new IncorrectTokenException("Expected a BigDecimalToken, got " + t)
-  }
-
-  @throws [IncorrectTokenException]
-  val pullString: BoxReaderScript[String] = pull map {
-    case StringToken(s) => s
-    case t => throw new IncorrectTokenException("Expected a StringToken, got " + t)
   }
 
   def getCached(id: Long): BoxReaderScript[Any]

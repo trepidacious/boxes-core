@@ -19,6 +19,6 @@ case class Cached(id: Long) extends CacheResult {
  * Object was not already cached, it is now cached using the provided id
  * @param id The id under which the object has now been cached
  */
-case class New(id:Int) extends CacheResult {
+case class New(id:Long) extends CacheResult {
     def isCached = false
 }

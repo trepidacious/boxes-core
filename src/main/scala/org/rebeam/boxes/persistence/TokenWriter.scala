@@ -3,7 +3,7 @@ package org.rebeam.boxes.persistence
 trait TokenWriter {
  def write(t: Token)
 
- private val c = collection.mutable.Map[Any, Int]()
+ private val c = collection.mutable.Map[Any, Long]()
  private var nextId = 0
 
  /**
@@ -36,18 +36,7 @@ trait TokenWriter {
   * Cache a box
   * @param id  The id of the box to cache
   */
- def cacheBox(id: Long) {
-   if (cachedBoxIds.contains(id)) throw new BoxCacheException("Box id " + id + " is already cached - don't cache it again!")
-   cachedBoxIds.add(id)
- }
-
- /**
-  * Check whether a box is already cached
-  * @param id  The id of the box to check
-  * @return    True if cacheBox has already been called on this id, indicating that the full contents have been
-  *            written already, and a ref can be used
-  */
- def isBoxCached(id: Long) = cachedBoxIds.contains(id)
+ def cacheBox(id: Long): CacheResult = if (cachedBoxIds.contains(id)) Cached(id) else New(id)
 
  def close(): Unit
 }
