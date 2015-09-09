@@ -5,6 +5,7 @@ import org.rebeam.boxes.persistence._
 import org.rebeam.boxes.persistence.formats._
 
 object JsonDemo extends App {
+  
   import PrimFormats._
   import ProductFormats._
   import BasicFormats._
@@ -21,7 +22,8 @@ object JsonDemo extends App {
   val bobString = JsonPrettyIO.toJsonString(bob)
   println(bobString)
 
-  println(JsonPrettyIO.toJsonString(List(1, 2, 3, 4)))
+  val listString = JsonPrettyIO.toJsonString(List(1, 2, 3, 4))
+  println(listString)
 
   case object Thing
 
@@ -29,8 +31,12 @@ object JsonDemo extends App {
 
   println(JsonPrettyIO.toJsonString(Thing))
 
-  val bob2 = JsonPrettyIO.fromJsonString(bobString)
+  val bob2 = JsonPrettyIO.fromJsonString[Person](bobString)
 
   println(bob2)
+
+  val list2 = JsonPrettyIO.fromJsonString[List[Int]](listString)
+
+  println(list2)
 
 }
