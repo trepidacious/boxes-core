@@ -18,14 +18,19 @@ object JsonDemo extends App {
 
   val rev = Shelf.currentRevision
 
-  println(JsonPrettyIO.toJsonString(rev, bob))
+  val bobString = JsonPrettyIO.toJsonString(bob)
+  println(bobString)
 
-  println(JsonPrettyIO.toJsonString(rev, List(1, 2, 3, 4)))
+  println(JsonPrettyIO.toJsonString(List(1, 2, 3, 4)))
 
   case object Thing
 
   implicit lazy val ThingFormat = productFormat0(Thing)()
 
-  println(JsonPrettyIO.toJsonString(rev, Thing))
+  println(JsonPrettyIO.toJsonString(Thing))
+
+  val bob2 = JsonPrettyIO.fromJsonString(bobString)
+
+  println(bob2)
 
 }

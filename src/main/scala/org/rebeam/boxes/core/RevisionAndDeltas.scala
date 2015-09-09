@@ -15,7 +15,7 @@ object RevisionAndDeltas {
    * @param rad       The initial RevisionAndDeltas
    * @param runReactions  True to run reactions when they are created, or when boxes are written. False to ignore reactions
    * @tparam A        The result type of the script
-   * @return          (new RevisionAndDeltas, script result)
+   * @return          (new RevisionAndDeltas, script result, all deltas applied directly by the script - excluding those from reactions)
    */
   @tailrec final def appendScript[A](script: BoxScript[A], rad: RevisionAndDeltas, boxDeltas: BoxDeltas, runReactions: Boolean = true, changedSources: Set[Box[_]] = Set.empty): (RevisionAndDeltas, A, BoxDeltas) = script.resume match {
 

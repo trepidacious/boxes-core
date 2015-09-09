@@ -56,7 +56,7 @@ object ProductFormatsGen {
       |      $optionsFields
       |    )
       |                       
-      |    def readOptions(options: Options) = {
+      |    def readOptions(options: Options): BoxReaderScript[Options] = {
       |      import BoxReaderDeltaF._
       |      for {
       |        t <- peek
@@ -69,7 +69,7 @@ object ProductFormatsGen {
       |              else throw new IncorrectTokenException("Product format has unrecognised name " + n)
       |
       |            case t => throw new IncorrectTokenException("Product format has unexpected token " + t)            
-      |          }
+      |          } flatMap {readOptions(_)}
       |        }
       |      } yield newOptions
       |    }

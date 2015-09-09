@@ -6,6 +6,8 @@ import util.{WeakHashSet, GCWatcher, RWLock}
 import scala.collection.immutable.{Range, Map}
 import BoxDelta._
 
+import org.rebeam.boxes.persistence._
+
 object Shelf {
 
   private val lock = RWLock()
@@ -34,6 +36,23 @@ object Shelf {
     Range(0, retries).view.map(_ => run(s)).find(o => o.isDefined).flatten.getOrElse(throw new RuntimeException("Transaction failed too many times"))
 
   def atomic[A](s: BoxScript[A]): A = runRepeated(s)._2
+
+  def runReader[A](s: BoxReaderScript[A], reader: TokenReader): Option[(Revision, A)] = {
+    val baseRevision = currentRevision
+
+    val baseRad = RevisionAndDeltas(baseRevision, BoxDeltas.empty)
+
+    val (finalRad, result, _, _) = BoxReaderScript.run(s, baseRad, BoxDeltas.empty, reader)
+
+    commit(RevisionAndDeltas(baseRevision, finalRad.deltas)).map((_, result))    
+  }
+
+  def runReaderOrException[A](s: BoxReaderScript[A], reader: TokenReader): A = runReader(s, reader) match {
+    case Some((_, t)) => t
+    case None => throw new RuntimeException("Shelf.runReaderOrException failed - should not occur for valid tokens and formats")
+  }
+
+  def runWriter[A](s: BoxWriterScript[A], writer: TokenWriter): A = BoxWriterScript.run(s, currentRevision, writer)._1
 
   def commit(rad: RevisionAndDeltas): Option[Revision] = {
     //TODO: Note we can be more optimistic here - get the current revision, try to apply it and if that works, lock
