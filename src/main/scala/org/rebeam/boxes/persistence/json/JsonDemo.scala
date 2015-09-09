@@ -5,7 +5,7 @@ import org.rebeam.boxes.persistence._
 import org.rebeam.boxes.persistence.formats._
 
 object JsonDemo extends App {
-  
+
   import PrimFormats._
   import ProductFormats._
   import BasicFormats._
@@ -16,8 +16,6 @@ object JsonDemo extends App {
 
   val alicia = Person("Alicia", "A", 42, None, List("red", "blue"))
   val bob = Person("Bob", "B", 43, Some(alicia), List("grey"))
-
-  val rev = Shelf.currentRevision
 
   val bobString = JsonPrettyIO.toJsonString(bob)
   println(bobString)
