@@ -30,3 +30,5 @@ scalacOptions ++= Seq(
   "-Xfatal-warnings",
   "-Xlint"
 )
+
+testOptions in Test += Tests.Argument("-oF")

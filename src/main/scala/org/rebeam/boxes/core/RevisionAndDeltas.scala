@@ -83,7 +83,7 @@ object RevisionAndDeltas {
 case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
 
   def create[T](t: T): (BoxDeltas, Box[T]) = {
-    val box = Box[T]()
+    val box = Box.newInstance[T]()
     (BoxDeltas.single(BoxCreated(box, t)), box)
   }
 

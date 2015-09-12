@@ -54,7 +54,8 @@ class Box[T](val id: Long) extends Identifiable {
 
 object Box {
   private val nextId = new AtomicInteger(0)
-  def apply[T](): Box[T] = new Box[T](nextId.getAndIncrement())
+  def newInstance[T](): Box[T] = new Box[T](nextId.getAndIncrement())
+  def apply[T](t: T): BoxScript[Box[T]] = BoxUtils.create(t:T)
 }
 
 case class BoxState[+T](revision: Long, value: T)

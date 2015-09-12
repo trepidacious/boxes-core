@@ -45,7 +45,7 @@ object NodeFormatsGen {
       |      } yield ()
       |    }
       |
-      |    def readEntries(n: N) = {
+      |    def readEntries(n: N): BoxReaderScript[Unit] = {
       |      import BoxReaderDeltaF._
       |      for {
       |        t <- peek
@@ -58,7 +58,7 @@ object NodeFormatsGen {
       |              case x => throw new IncorrectTokenException("Unknown field name in Node dict " + x)
       |            }
       |            case x: Token => throw new IncorrectTokenException("Expected DictEntry in a Node Dict, got " + x)
-      |          }
+      |          } flatMap {_ => readEntries(n)}
       |        }
       |      } yield ()
       |    }
