@@ -18,7 +18,8 @@ libraryDependencies ++= Seq(
                                                         //but IS the one referenced by scalatest on github
   "org.clapper" %% "grizzled-slf4j" % "1.0.2",
   "org.scalaz" %% "scalaz-core" % "7.1.2",
-  "org.scalaz.stream" %% "scalaz-stream" % "0.7.2a"
+  "org.scalaz.stream" %% "scalaz-stream" % "0.7.2a",
+  "com.google.protobuf" % "protobuf-java" % "2.6.1"
 )
 
 scalacOptions ++= Seq(
