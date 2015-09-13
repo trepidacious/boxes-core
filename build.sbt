@@ -31,4 +31,4 @@ scalacOptions ++= Seq(
   "-Xlint"
 )
 
-testOptions in Test += Tests.Argument("-oF")
+testOptions in Test += Tests.Argument("-oDF")

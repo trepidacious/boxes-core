@@ -16,6 +16,9 @@ import org.scalatest.prop.PropertyChecks
 import BoxTypes._
 import BoxUtils._
 
+import scalaz._
+import Scalaz._
+
 import PersistenceSpecUtils._
 
 class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
@@ -53,14 +56,15 @@ class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
 
     os.toByteArray shouldBe os2.toByteArray
 
-    for {
-      n1 <- bob.name()
-      n2 <- bob2.name()
-      a1 <- bob.age()
-      a2 <- bob2.age()
-    } yield {
-      bob.name() shouldBe bob2.name()
-      bob.age() shouldBe bob2.age()
+    atomic {for {
+        n1 <- bob.name()
+        n2 <- bob2.name()
+        a1 <- bob.age()
+        a2 <- bob2.age()
+      } yield {
+        n1 shouldBe n2
+        a1 shouldBe a2
+      }
     }
   }
 
@@ -120,14 +124,23 @@ class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
       ProtobufIO.write(list, os)
       val list2 = ProtobufIO.read[List[Person]](new ByteArrayInputStream(os.toByteArray))
 
-      //TODO implement
-      // shelf.read(implicit txn => {
-      //   list.size shouldBe list2.size
-      //   list.zip(list2).foreach{case (first, second) =>
-      //     first.name() shouldBe second.name()
-      //     first.age() shouldBe second.age()
-      //   }
-      // })
+      list.size shouldBe list2.size
+      val lists = list.zip(list2)
+
+      val values = atomic {
+        lists traverseU {pair => 
+          for {
+            n1 <- pair._1.name()
+            n2 <- pair._2.name()
+            a1 <- pair._1.age()
+            a2 <- pair._2.age()
+          } yield {
+            n1 shouldBe n2
+            a1 shouldBe a2
+          }
+        }
+      }
+
     }
 
     "duplicate arbitrary lists " in {
@@ -141,7 +154,7 @@ class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
       forAll{ (list: List[BigDecimal]) => duplicateList(list)};   info("of BigDecimal")
     }
 
-    // "duplicate arbitrary Person" in forAll{ (name: String, age: Int) => duplicatePerson(name, age)}
+    "duplicate arbitrary Person" in forAll{ (name: String, age: Int) => duplicatePerson(name, age)}
 
     "preserve identicality of Persons with AllLinks for nodes" in {
       duplicateIdenticalPersonList(EmptyLinks, AllLinks)
@@ -174,7 +187,7 @@ class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
       info ("Boxes and nodes with id links")
     }
 
-    "duplicate CaseClass" in  {
+    "duplicate arbitrary CaseClass" in  {
       forAll{(s: String, i: Int) => duplicateCaseClass(CaseClass(s, i))}
     }
 
