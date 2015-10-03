@@ -7,79 +7,6 @@ import scala.collection.immutable.Set
 import scalaz.{\/-, -\/}
 import BoxDelta._
 
-object RevisionAndDeltas {
-  /**
-   * Run a script and append the deltas it generates to an existing RevisionAndDeltas, creating a new
-   * RevisionAndDeltas and a script result
-   * @param script    The script to run
-   * @param rad       The initial RevisionAndDeltas
-   * @param runReactions  True to run reactions when they are created, or when boxes are written. False to ignore reactions
-   * @tparam A        The result type of the script
-   * @return          (new RevisionAndDeltas, script result, all deltas applied directly by the script - excluding those from reactions)
-   */
-  @tailrec final def appendScript[A](script: BoxScript[A], rad: RevisionAndDeltas, boxDeltas: BoxDeltas, runReactions: Boolean = true, changedSources: Set[Box[_]] = Set.empty): (RevisionAndDeltas, A, BoxDeltas) = script.resume match {
-
-    case -\/(CreateBoxDeltaF(t, toNext)) =>
-      val (deltas, box) = rad.create(t)
-      val next = toNext(box)
-      val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2, boxDeltas.append(deltas), runReactions, changedSources)
-
-    case -\/(ReadBoxDeltaF(b, toNext)) =>
-      val (deltas, value) = rad.get(b)
-      val next = toNext(value)
-      val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2, boxDeltas.append(deltas), runReactions, changedSources)
-
-    case -\/(WriteBoxDeltaF(b, t, next)) =>
-      val (deltas, box) = rad.set(b, t)
-      val rad2 = rad.appendDeltas(deltas)
-      //TODO - we can probably just skip calling react for efficiency if the write does not
-      //change box state. Note that the reactor itself uses its own mechanism
-      //to observe writes when applying reactions, unlike in old mutable-txn
-      //system
-      val rad3 = if (runReactions) Reactor.react(rad2, deltas) else rad2
-      appendScript(next, rad3, boxDeltas.append(deltas), runReactions, changedSources)
-
-    case -\/(CreateReactionDeltaF(action, toNext)) =>
-      val (deltas, reaction) = rad.createReaction(action)
-      val next = toNext(reaction)
-      val rad2 = rad.appendDeltas(deltas)
-      val rad3 = if (runReactions) Reactor.react(rad2, deltas) else rad2
-      appendScript(next, rad3, boxDeltas.append(deltas), runReactions, changedSources)
-
-    case -\/(ObserveDeltaF(obs, next)) =>
-      val deltas = rad.observe(obs)
-      val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2, boxDeltas.append(deltas), runReactions, changedSources)
-
-    case -\/(UnobserveDeltaF(obs, next)) =>
-      val deltas = rad.unobserve(obs)
-      val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2, boxDeltas.append(deltas), runReactions, changedSources)
-
-    case -\/(AttachReactionToBoxF(r, b, next)) =>
-      val deltas = rad.attachReactionToBox(r, b)
-      val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2, boxDeltas.append(deltas), runReactions, changedSources)
-
-    case -\/(DetachReactionFromBoxF(r, b, next)) =>
-      val deltas = rad.detachReactionFromBox(r, b)
-      val rad2 = rad.appendDeltas(deltas)
-      appendScript(next, rad2, boxDeltas.append(deltas), runReactions, changedSources)
-
-    case -\/(ChangedSourcesF(toNext)) =>
-      val next = toNext(changedSources)
-      appendScript(next, rad, boxDeltas, runReactions, changedSources)
-
-    case -\/(JustF(t, toNext)) =>
-      val next = toNext(t)
-      appendScript(next, rad, boxDeltas, runReactions, changedSources)
-
-    case \/-(x) => (rad, x.asInstanceOf[A], boxDeltas)
-  }
-}
-
 case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
 
   def create[T](t: T): (BoxDeltas, Box[T]) = {
@@ -126,7 +53,7 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
   def appendDeltas(d: BoxDeltas) = RevisionAndDeltas(revision, deltas.append(d))
 
   /** Run a script and append the deltas it generates to this instance, creating a new RevisionAndDeltas, a script result and the new deltas added by the script */
-  def appendScript[A](script: BoxScript[A], runReactions: Boolean = true, changedSources: Set[Box[_]] = Set.empty): (RevisionAndDeltas, A, BoxDeltas) = RevisionAndDeltas.appendScript[A](script, this, BoxDeltas.empty, runReactions, changedSources)
+  def appendScript[A](script: BoxScript[A], runReactions: Boolean = true, changedSources: Set[Box[_]] = Set.empty): (RevisionAndDeltas, A, BoxDeltas) = BoxScript.run[A](script, this, BoxDeltas.empty, runReactions, changedSources)
 
   def deltasWouldChange(newDeltas: BoxDeltas): Boolean = newDeltas.deltas.exists{
     case BoxWritten(b, t, _) => get(b) != t

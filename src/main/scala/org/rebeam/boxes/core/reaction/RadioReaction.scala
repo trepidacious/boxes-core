@@ -3,6 +3,7 @@ package org.rebeam.boxes.core.reaction
 import org.rebeam.boxes.core._
 import BoxTypes._
 import BoxUtils._
+import BoxScript._
 
 import scalaz._
 import Scalaz._

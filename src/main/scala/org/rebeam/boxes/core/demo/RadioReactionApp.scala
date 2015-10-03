@@ -3,6 +3,7 @@ package org.rebeam.boxes.core.demo
 import org.rebeam.boxes.core._
 import BoxUtils._
 import BoxTypes._
+import BoxScript._
 
 import org.rebeam.boxes.core.reaction.RadioReaction
 

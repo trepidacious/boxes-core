@@ -2,7 +2,7 @@ package org.rebeam.boxes.core.util
 
 import java.util.concurrent.{TimeUnit, ThreadFactory, Executors}
 
-class CoalescingResponder(response: => Unit, fusionInterval:Long = 5, tickInterval:Long = 20) {
+class CoalescingResponder(response: => Unit, fusionInterval: Long = 5, tickInterval: Long = 20) {
 
   var lastRequestTime = 0L
   var requestPending = false

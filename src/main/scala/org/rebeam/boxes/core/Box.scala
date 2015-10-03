@@ -23,39 +23,14 @@ class Box[T](val id: Long) extends Identifiable {
 
   override def toString = "Box(" + id + ")"
 
-  /** Get the value of this box in the context of a BoxScript - can be used in for-comprehensions */
-  def get() = BoxDeltaF.get(this)
-
-  /**
-   * Set the value of this box in the context of a State - can be used in for-comprehensions
-   * to set Box value in associated RevisionDelta
-   */
-  def set(t: T) = BoxDeltaF.set(this, t)
-
-  def apply() = get()
-
-  def update(t: T) = set(t)
-
   def get(revision: Revision): T = revision.valueOf(this).getOrElse(throw new RuntimeException("Missing Box(" + this.id + ")"))
   def apply(revision: Revision): T = get(revision)
-
-  def attachReaction(reaction: Reaction) = BoxDeltaF.attachReactionToBox(reaction, this)
-  def detachReaction(reaction: Reaction) = BoxDeltaF.detachReactionFromBox(reaction, this)
-
-  def applyReaction(rScript: BoxScript[T]) = for {
-    r <- BoxUtils.createReaction(for {
-      t <- rScript
-      _ <- set(t)
-    } yield ())
-    _ <- this.attachReaction(r)
-  } yield r
 
 }
 
 object Box {
   private val nextId = new AtomicInteger(0)
-  def newInstance[T](): Box[T] = new Box[T](nextId.getAndIncrement())
-  def apply[T](t: T): BoxScript[Box[T]] = BoxUtils.create(t:T)
+  private[core] def newInstance[T](): Box[T] = new Box[T](nextId.getAndIncrement())
 }
 
 case class BoxState[+T](revision: Long, value: T)
@@ -65,5 +40,5 @@ case class BoxState[+T](revision: Long, value: T)
 //However BoxChange is not a public API, and so is pretty much an implementation detail to get garbage collection
 //to work as needed - retaining box values only as long as both the Box and the Revision where the Box had the value
 //are retained.
-class BoxChange(val revision: Long)
+private[core] class BoxChange(val revision: Long)
 

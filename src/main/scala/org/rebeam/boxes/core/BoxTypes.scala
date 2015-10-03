@@ -13,4 +13,7 @@ object BoxTypes {
   type BoxWriterScript[A] = Free[BoxWriterDeltaF, A]
   implicit val boxWriterDeltaFunctor = BoxWriterDeltaF.boxWriterDeltaFunctor
 
+  type BoxObserverScript[A] = Free[BoxObserverDeltaF, A]
+  implicit val boxObserverDeltaFunctor = BoxObserverDeltaF.boxObserverDeltaFunctor
+
 }

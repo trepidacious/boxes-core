@@ -37,9 +37,12 @@ sealed trait BoxReaderDeltaF[+Next]
 //BoxDeltaF elements except observe/unobserve with additional cases for writing tokens during serialisation of boxes data
 sealed trait BoxWriterDeltaF[+Next]
 
+//BoxDeltaF elements with only reading of state, suitable for use in tracked observers
+sealed trait BoxObserverDeltaF[+Next]
+
 //Cases usable in any delta functors - do not modify any box data
-case class ReadBoxDeltaF[Next, T](b: Box[T], toNext: T => Next) extends BoxDeltaF[Next] with BoxReaderDeltaF[Next] with BoxWriterDeltaF[Next]
-case class JustF[Next, T](t: T, toNext: T => Next) extends BoxDeltaF[Next] with BoxReaderDeltaF[Next] with BoxWriterDeltaF[Next]
+case class ReadBoxDeltaF[Next, T](b: Box[T], toNext: T => Next) extends BoxDeltaF[Next] with BoxReaderDeltaF[Next] with BoxWriterDeltaF[Next] with BoxObserverDeltaF[Next]
+case class JustF[Next, T](t: T, toNext: T => Next) extends BoxDeltaF[Next] with BoxReaderDeltaF[Next] with BoxWriterDeltaF[Next] with BoxObserverDeltaF[Next]
 
 //Cases usable in any delta functor allowing modification of Box State
 case class CreateBoxDeltaF[Next, T](t: T, toNext: Box[T] => Next) extends BoxDeltaF[Next] with BoxReaderDeltaF[Next]
@@ -271,6 +274,24 @@ object BoxWriterDeltaF {
 
   def cacheBox[T](box: Box[T]): BoxWriterScript[CacheResult]
     = liftF(CacheBoxF(box, identity[CacheResult]): BoxWriterDeltaF[CacheResult])(boxWriterDeltaFunctor)
+
+  val nothing = just(())
+
+}
+
+object BoxObserverDeltaF {
+  val boxObserverDeltaFunctor: Functor[BoxObserverDeltaF] = new Functor[BoxObserverDeltaF] {
+    override def map[A, B](bdf: BoxObserverDeltaF[A])(f: (A) => B): BoxObserverDeltaF[B] = bdf match {
+      case ReadBoxDeltaF(b, toNext) => ReadBoxDeltaF(b, toNext andThen f)
+      case JustF(t, toNext) => JustF(t, toNext andThen f)
+    }
+  }
+
+  def get[T](box: Box[T]): BoxWriterScript[T]
+    = liftF(ReadBoxDeltaF(box, identity[T]): BoxWriterDeltaF[T])(boxWriterDeltaFunctor)
+
+  def just[T](t: T): BoxWriterScript[T]
+    = liftF(JustF(t, identity: T => T): BoxWriterDeltaF[T])(boxWriterDeltaFunctor)
 
   val nothing = just(())
 
