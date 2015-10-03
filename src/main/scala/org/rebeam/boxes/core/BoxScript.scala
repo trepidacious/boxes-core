@@ -53,8 +53,8 @@ object BoxScript {
   val nothing                                       = BoxDeltaF.nothing
 
   def modify[T](b: Box[T], f: T => T) = for {
-    o <- b()
-    _ <- b() = f(o)
+    o <- get(b)
+    _ <- set(b, f(o))
   } yield o
 
   def cal[T](script: BoxScript[T]) = for {
@@ -63,7 +63,7 @@ object BoxScript {
     reaction <- createReaction{
       for {
         result <- script
-        _ <- box() = result
+        _ <- set(box, result)
       } yield ()
     }
     _ <- box.attachReaction(reaction) //Attach the reaction to the box it updates, so that it will
