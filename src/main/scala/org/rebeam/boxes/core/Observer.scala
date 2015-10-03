@@ -20,10 +20,13 @@ object Observer {
   def apply(o: Revision => Unit): Observer = new Observer {
     def observe(r: Revision) = o(r)
   }
-  
+
+  def apply[A](script: BoxObserverScript[A], effect: A => Unit, exe: Executor = Observer.defaultExecutor, onlyMostRecent: Boolean = true): Observer = 
+    new ObserverDefault(script, effect, exe, onlyMostRecent)
+
 }
 
-class ObserverDefault[A](script: BoxObserverScript[A], effect: A => Unit, exe: Executor = Observer.defaultExecutor, onlyMostRecent: Boolean = true) extends Observer {
+private class ObserverDefault[A](script: BoxObserverScript[A], effect: A => Unit, exe: Executor = Observer.defaultExecutor, onlyMostRecent: Boolean = true) extends Observer {
   private val revisionQueue = new scala.collection.mutable.Queue[Revision]()
   private val lock = Lock()
   private var state: Option[(Long, Set[Long])] = None
