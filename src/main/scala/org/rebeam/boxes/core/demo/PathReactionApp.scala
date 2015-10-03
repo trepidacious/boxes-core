@@ -4,7 +4,7 @@ import org.rebeam.boxes.core._
 import org.rebeam.boxes.core.reaction._
 import BoxUtils._
 import BoxTypes._
-import BoxScript._
+import BoxScriptImports._
 
 import scalaz._
 import Scalaz._

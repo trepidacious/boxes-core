@@ -53,7 +53,7 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
   def appendDeltas(d: BoxDeltas) = RevisionAndDeltas(revision, deltas.append(d))
 
   /** Run a script and append the deltas it generates to this instance, creating a new RevisionAndDeltas, a script result and the new deltas added by the script */
-  def appendScript[A](script: BoxScript[A], runReactions: Boolean = true, changedSources: Set[Box[_]] = Set.empty): (RevisionAndDeltas, A, BoxDeltas) = BoxScript.run[A](script, this, BoxDeltas.empty, runReactions, changedSources)
+  def appendScript[A](script: BoxScript[A], runReactions: Boolean = true, changedSources: Set[Box[_]] = Set.empty): (RevisionAndDeltas, A, BoxDeltas) = BoxScriptInterpreter.run[A](script, this, BoxDeltas.empty, runReactions, changedSources)
 
   def deltasWouldChange(newDeltas: BoxDeltas): Boolean = newDeltas.deltas.exists{
     case BoxWritten(b, t, _) => get(b) != t

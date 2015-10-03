@@ -3,7 +3,7 @@ package org.rebeam.boxes.core.data
 import org.rebeam.boxes.core._
 import BoxTypes._
 import BoxUtils._
-import BoxScript._
+import BoxScriptImports._
 
 //FIXME this stuff is all fairly awful - can maybe rewrite with shapeless
 

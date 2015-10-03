@@ -3,7 +3,7 @@ package org.rebeam.boxes.core.data
 import org.rebeam.boxes.core._
 import BoxTypes._
 import BoxUtils._
-import BoxScript._
+import BoxScriptImports._
 
 case class ListIndices[T](selected: Box[Set[T]], indices: Box[Set[Int]])
 

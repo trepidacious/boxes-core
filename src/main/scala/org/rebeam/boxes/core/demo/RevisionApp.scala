@@ -2,7 +2,7 @@ package org.rebeam.boxes.core.demo
 
 import org.rebeam.boxes.core._
 import BoxUtils._
-import BoxScript._
+import BoxScriptImports._
 
 object RevisionApp extends App {
 

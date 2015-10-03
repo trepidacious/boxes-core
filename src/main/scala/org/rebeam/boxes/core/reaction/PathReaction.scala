@@ -5,7 +5,7 @@ import org.rebeam.boxes.core.util.{OptionTConverter, TConverter, GConverter}
 
 import BoxTypes._
 import BoxUtils._
-import BoxScript._
+import BoxScriptImports._
 
 import scalaz._
 import Scalaz._
