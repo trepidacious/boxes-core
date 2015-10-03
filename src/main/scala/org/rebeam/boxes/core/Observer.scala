@@ -1,29 +1,81 @@
 package org.rebeam.boxes.core
 
+import util._
 import BoxUtils._
 import BoxTypes._
+import BoxObserverScriptImports._
 
-import java.util.concurrent.{ExecutorService, Executors}
+import java.util.concurrent.{ExecutorService, Executors, Executor}
 
 trait Observer {
   def observe(r: Revision): Unit
 }
 
 object Observer {
+
+  val defaultExecutorPoolSize = 8
+  val defaultThreadFactory = DaemonThreadFactory()
+  lazy val defaultExecutor: Executor = Executors.newFixedThreadPool(defaultExecutorPoolSize, defaultThreadFactory)
+
   def apply(o: Revision => Unit): Observer = new Observer {
     def observe(r: Revision) = o(r)
   }
+  
 }
 
-// object ScriptObserver {
-//   val defaultPoolSize = 4
-//   val defaultExecutor = Executors.newFixedThreadPool(defaultPoolSize)
-// }
+class ObserverDefault[A](script: BoxObserverScript[A], effect: A => Unit, exe: Executor = Observer.defaultExecutor, onlyMostRecent: Boolean = true) extends Observer {
+  private val revisionQueue = new scala.collection.mutable.Queue[Revision]()
+  private val lock = Lock()
+  private var state: Option[(Long, Set[Long])] = None
+  private var pending = false;
 
-// class ScriptObserver[A](script: BoxObserverScript[A], effect: A => Unit, scriptExecutor: ExecutorService = ScriptObserver.defaultExecutor, effectExecutor: ExecutorService = ScriptObserver.defaultExecutor) extends Observer {
-//   def observe(r: Revision): Unit = {
-//     scriptExecutor.execute(new Runnable() {
-//       def run(): Unit = BoxObserverScript.run(script, r, Set.empty)
-//     })
-//   }  
-// }
+  private def relevant(r: Revision) = {
+    state match {
+      case None => true
+      case Some((index, reads)) => reads.iterator.flatMap(r.indexOfId(_)).exists(_>index)
+    }
+  }
+  
+  private def go() {
+    
+    //If we have more revisions pending, try to run the next
+    if (!revisionQueue.isEmpty) {
+      val r = revisionQueue.dequeue
+      
+      //If this revision is relevant (i.e. it has changes the view will read)
+      //then run the transaction on it
+      if (relevant(r)) {
+        pending = true
+        exe.execute(new Runnable() {
+          def run = {
+            //FIXME if this has an exception, it kills the View (i.e. it won't run on any future revisions).
+            val (a, reads) = BoxObserverScriptInterpreter.run(script, r, Set.empty)
+            effect(a)
+            lock.run{
+              state = Some((r.index, reads))
+              go()
+            }
+          }
+        })
+
+      //If this revision is NOT relevant, try the next revision
+      } else {
+        go()
+      }
+      
+    //If we have no more revisions, then stop for now
+    } else {
+      pending = false
+    }
+  }
+  
+  def observe(r: Revision): Unit = {
+    lock.run {
+      if (onlyMostRecent) revisionQueue.clear
+      revisionQueue.enqueue(r)
+      if (!pending) {
+        go()
+      }
+    }
+  }
+}

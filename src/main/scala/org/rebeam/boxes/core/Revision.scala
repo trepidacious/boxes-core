@@ -13,6 +13,7 @@ class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[
   } yield BoxState(change.revision, value)
 
   def indexOf(box: Box[_]): Option[Long] = map.get(box.id).map(_.revision)
+  def indexOfId(id: Long): Option[Long] = map.get(id).map(_.revision)
 
   def valueOf[T](box: Box[T]): Option[T] = {
     val change = map.get(box.id)

@@ -1,4 +1,4 @@
-package org.rebeam.boxes.persistence
+package org.rebeam.boxes.core
 
 import org.rebeam.boxes.core._
 
@@ -11,7 +11,7 @@ import scala.annotation.tailrec
 import scala.collection.immutable.Set
 import BoxDelta._
 
-object BoxObserverScript {
+object BoxObserverScriptInterpreter {
   
   /**
    * Run a script using data from a Revision, supporting only reading of boxes, producing a result
@@ -20,18 +20,18 @@ object BoxObserverScript {
    * @tparam A            The result type of the script
    * @return              Script result
    */
-  @tailrec final def run[A](script: BoxObserverScript[A], rev: Revision): A = script.resume match {
+  @tailrec final def run[A](script: BoxObserverScript[A], rev: Revision, reads: Set[Long]): (A, Set[Long]) = script.resume match {
 
     case -\/(ReadBoxDeltaF(b, toNext)) =>
       val value = b.get(rev)
       val next = toNext(value)
-      run(next, rev)
+      run(next, rev, reads + b.id)
 
     case -\/(JustF(t, toNext)) =>
       val next = toNext(t)
-      run(next, rev)
+      run(next, rev, reads)
 
-    case \/-(x) => x.asInstanceOf[A]
+    case \/-(x) => (x.asInstanceOf[A], reads)
   }
 
 }
