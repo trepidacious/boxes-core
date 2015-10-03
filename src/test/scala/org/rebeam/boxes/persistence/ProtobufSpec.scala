@@ -15,6 +15,7 @@ import org.scalatest._
 import org.scalatest.prop.PropertyChecks
 import BoxTypes._
 import BoxUtils._
+import BoxScript._
 
 import scalaz._
 import Scalaz._

@@ -4,6 +4,7 @@ import org.rebeam.boxes.core._
 import BoxTypes._
 import BoxUtils._
 import org.scalatest.Matchers
+import BoxScript._
 
 object PersistenceSpecUtils extends Matchers {
   def duplicate[T](t: T, format: Format[T]): Unit = {
