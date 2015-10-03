@@ -287,11 +287,11 @@ object BoxObserverDeltaF {
     }
   }
 
-  def get[T](box: Box[T]): BoxWriterScript[T]
-    = liftF(ReadBoxDeltaF(box, identity[T]): BoxWriterDeltaF[T])(boxWriterDeltaFunctor)
+  def get[T](box: Box[T]): BoxObserverScript[T]
+    = liftF(ReadBoxDeltaF(box, identity[T]): BoxObserverDeltaF[T])(boxObserverDeltaFunctor)
 
-  def just[T](t: T): BoxWriterScript[T]
-    = liftF(JustF(t, identity: T => T): BoxWriterDeltaF[T])(boxWriterDeltaFunctor)
+  def just[T](t: T): BoxObserverScript[T]
+    = liftF(JustF(t, identity: T => T): BoxObserverDeltaF[T])(boxObserverDeltaFunctor)
 
   val nothing = just(())
 
