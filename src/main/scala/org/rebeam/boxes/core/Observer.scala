@@ -3,7 +3,7 @@ package org.rebeam.boxes.core
 import util._
 import BoxUtils._
 import BoxTypes._
-import BoxObserverScriptImports._
+import BoxScriptImports._
 
 import java.util.concurrent.{ExecutorService, Executors, Executor}
 
@@ -21,12 +21,12 @@ object Observer {
     def observe(r: Revision) = o(r)
   }
 
-  def apply[A](script: BoxObserverScript[A], effect: A => Unit, exe: Executor = Observer.defaultExecutor, onlyMostRecent: Boolean = true): Observer = 
+  def apply[A](script: BoxScript[A], effect: A => Unit, exe: Executor = Observer.defaultExecutor, onlyMostRecent: Boolean = true): Observer = 
     new ObserverDefault(script, effect, exe, onlyMostRecent)
 
 }
 
-private class ObserverDefault[A](script: BoxObserverScript[A], effect: A => Unit, exe: Executor = Observer.defaultExecutor, onlyMostRecent: Boolean = true) extends Observer {
+private class ObserverDefault[A](script: BoxScript[A], effect: A => Unit, exe: Executor = Observer.defaultExecutor, onlyMostRecent: Boolean = true) extends Observer {
   private val revisionQueue = new scala.collection.mutable.Queue[Revision]()
   private val lock = Lock()
   private var state: Option[(Long, Set[Long])] = None
@@ -52,7 +52,7 @@ private class ObserverDefault[A](script: BoxObserverScript[A], effect: A => Unit
         exe.execute(new Runnable() {
           def run = {
             //FIXME if this has an exception, it kills the View (i.e. it won't run on any future revisions).
-            val (a, reads) = BoxObserverScriptInterpreter.run(script, r, Set.empty)
+            val (a, reads) = BoxScriptInterpreter.runReadOnly(script, r)
             effect(a)
             lock.run{
               state = Some((r.index, reads))

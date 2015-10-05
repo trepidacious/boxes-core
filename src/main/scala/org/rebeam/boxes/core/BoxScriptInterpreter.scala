@@ -22,6 +22,31 @@ object BoxScriptInterpreter {
    * @tparam A        The result type of the script
    * @return          (new RevisionAndDeltas, script result, all deltas applied directly by the script - excluding those from reactions)
    */
+  @tailrec final def runReadOnly[A](script: BoxScript[A], r: Revision, reads: Set[Long] = Set.empty): (A, Set[Long]) = script.resume match {
+
+    case -\/(ReadBoxDeltaF(b, toNext)) =>
+      val value = b.get(r)
+      val next = toNext(value)
+      runReadOnly(next, r, reads + b.id)
+
+    case -\/(JustF(t, toNext)) =>
+      val next = toNext(t)
+      runReadOnly(next, r, reads)
+
+    case -\/(s) => throw new RuntimeException("Invalid operation in read-only script: " + s)
+
+    case \/-(x) => (x.asInstanceOf[A], reads)
+  }
+
+  /**
+   * Run a script and append the deltas it generates to an existing RevisionAndDeltas, creating a new
+   * RevisionAndDeltas and a script result
+   * @param script    The script to run
+   * @param rad       The initial RevisionAndDeltas
+   * @param runReactions  True to run reactions when they are created, or when boxes are written. False to ignore reactions
+   * @tparam A        The result type of the script
+   * @return          (new RevisionAndDeltas, script result, all deltas applied directly by the script - excluding those from reactions)
+   */
   @tailrec final def run[A](script: BoxScript[A], rad: RevisionAndDeltas, boxDeltas: BoxDeltas, runReactions: Boolean = true, changedSources: Set[Box[_]] = Set.empty): (RevisionAndDeltas, A, BoxDeltas) = script.resume match {
 
     case -\/(CreateBoxDeltaF(t, toNext)) =>
