@@ -38,6 +38,8 @@ object BoxScriptImports {
       _ <- b.attachReaction(r)
     } yield r
 
+    def modify(f: T => T) = BoxScriptImports.modify(b, f)
+
   }
 
   def create[T](t: T)                               = BoxDeltaF.create(t)

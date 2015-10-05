@@ -62,15 +62,15 @@ case class ListLedger[T](list: Seq[T], rView: RecordView[T]) extends Ledger {
  * current List and RecordView in the provided refs.
  */
 object ListLedgerBox {
-  def apply[T](list: Box[_ <: Seq[T]], rView: Box[RecordView[T]]): BoxScript[Box[ListLedger[T]]] = for {
+  def apply[T](list: Box[_ <: Seq[T]], rView: Box[RecordView[T]]): BoxScript[Box[Ledger]] = for {
     l <- list()
     rv <- rView()
-    v <- create(ListLedger(l, rv))
+    v <- create(ListLedger(l, rv): Ledger)
     //Note this will do nothing if list and view are the same, avoiding cycles
     r <- createReaction(for {
       l <- list()
       rv <- rView()
-      _ <- v() = ListLedger(l, rv)
+      _ <- v() = ListLedger(l, rv): Ledger
     } yield())
     _ <- v.attachReaction(r)
   } yield v
