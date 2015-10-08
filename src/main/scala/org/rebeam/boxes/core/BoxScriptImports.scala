@@ -13,20 +13,9 @@ import BoxDelta._
 import scala.language.implicitConversions
 
 object BoxScriptImports {
-  
+
+  //These methods on box only make sense when we are using a BoxScript  
   implicit class BoxInScript[T](b: Box[T]) {
-    // /** Get the value of this box in the context of a BoxScript - can be used in for-comprehensions */
-    // def get() = BoxDeltaF.get(b)
-
-    // /**
-    //  * Set the value of this box in the context of a State - can be used in for-comprehensions
-    //  * to set Box value in associated RevisionDelta
-    //  */
-    // def set(t: T) = BoxDeltaF.set(b, t)
-
-    // def apply() = get()
-
-    // def update(t: T) = set(t)
 
     def attachReaction(reaction: Reaction) = BoxDeltaF.attachReactionToBox(reaction, b)
     def detachReaction(reaction: Reaction) = BoxDeltaF.detachReactionFromBox(reaction, b)
@@ -43,6 +32,7 @@ object BoxScriptImports {
 
   }
 
+  //Smart constructors for BoxScript
   def create[T](t: T)                               = BoxDeltaF.create(t)
   def set[T](box: Box[T], t: T)                     = BoxDeltaF.set(box, t)
   def get[T](box: Box[T])                           = BoxDeltaF.get(box)
@@ -55,9 +45,9 @@ object BoxScriptImports {
   def just[T](t: T)                                 = BoxDeltaF.just(t)
   val nothing                                       = BoxDeltaF.nothing
 
-  def modify[T](b: Box[T], f: T => T) = for {
-    o <- get(b)
-    _ <- set(b, f(o))
+  def modify[T](b: BoxM[T], f: T => T) = for {
+    o <- b.read
+    _ <- b.write(f(o))
   } yield o
 
   def cal[T](script: BoxScript[T]) = for {
