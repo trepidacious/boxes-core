@@ -76,4 +76,8 @@ object BoxScriptImports {
   implicit class BoxScriptPlus[A](s: BoxScript[A]) {
     final def andThen[B](f: => BoxScript[B]): BoxScript[B] = s flatMap (_ => f)
   }
+
+  // implicit def BoxToBoxR[A](box: Box[A]): BoxR[A] = box.asBoxR
+  // implicit def BoxToBoxW[A](box: Box[A]): BoxW[A] = box.asBoxW
+  // implicit def BoxToBoxM[A](box: Box[A]): BoxM[A] = box.asBoxM
 }

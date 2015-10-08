@@ -26,6 +26,11 @@ class Box[T](val id: Long) extends Identifiable {
   def get(revision: Revision): T = revision.valueOf(this).getOrElse(throw new RuntimeException("Missing Box(" + this.id + ")"))
   def apply(revision: Revision): T = get(revision)
 
+  //As scripts for read, write and read/write
+  lazy val r = BoxScriptImports.get(this)
+  lazy val w = (t: T) => BoxScriptImports.set(this, t)
+  lazy val m = BoxM(r, w)
+
 }
 
 object Box {
