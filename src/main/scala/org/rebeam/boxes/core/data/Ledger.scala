@@ -182,11 +182,11 @@ trait MLens[T, V] extends Lens[T, V] {
  * MLens based on a Box and an access closure
  */
 object MBoxLens {
-  def apply[T, V](name: String, access: T=>Box[V])(implicit valueManifest:Manifest[V]) = {
+  def apply[T, V](name: String, access: T => Box[V])(implicit valueManifest:Manifest[V]) = {
     new MLensDefault[T, V](
       name,
-      t => access(t).get(),
-      (t, v) => access(t).set(v)
+      t => access(t).apply(),
+      (t, v) => access(t).update(v)
     )(valueManifest)
   }
 }
@@ -198,7 +198,7 @@ object BoxLens {
   def apply[T, V](name:String, access:(T => Box[V]))(implicit valueManifest:Manifest[V]) = {
     new LensDefault[T, V](
       name,
-      t => access(t).get()
+      t => access(t).apply()
     )(valueManifest)
   }
 }

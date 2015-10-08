@@ -10,22 +10,23 @@ import BoxTypes._
 import scala.annotation.tailrec
 import scala.collection.immutable.Set
 import BoxDelta._
+import scala.language.implicitConversions
 
 object BoxScriptImports {
   
   implicit class BoxInScript[T](b: Box[T]) {
-    /** Get the value of this box in the context of a BoxScript - can be used in for-comprehensions */
-    def get() = BoxDeltaF.get(b)
+    // /** Get the value of this box in the context of a BoxScript - can be used in for-comprehensions */
+    // def get() = BoxDeltaF.get(b)
 
-    /**
-     * Set the value of this box in the context of a State - can be used in for-comprehensions
-     * to set Box value in associated RevisionDelta
-     */
-    def set(t: T) = BoxDeltaF.set(b, t)
+    // /**
+    //  * Set the value of this box in the context of a State - can be used in for-comprehensions
+    //  * to set Box value in associated RevisionDelta
+    //  */
+    // def set(t: T) = BoxDeltaF.set(b, t)
 
-    def apply() = get()
+    // def apply() = get()
 
-    def update(t: T) = set(t)
+    // def update(t: T) = set(t)
 
     def attachReaction(reaction: Reaction) = BoxDeltaF.attachReactionToBox(reaction, b)
     def detachReaction(reaction: Reaction) = BoxDeltaF.detachReactionFromBox(reaction, b)
@@ -33,7 +34,7 @@ object BoxScriptImports {
     def applyReaction(rScript: BoxScript[T]) = for {
       r <- BoxScriptImports.createReaction(for {
         t <- rScript
-        _ <- set(t)
+        _ <- set(b, t)
       } yield ())
       _ <- b.attachReaction(r)
     } yield r
@@ -77,7 +78,7 @@ object BoxScriptImports {
     final def andThen[B](f: => BoxScript[B]): BoxScript[B] = s flatMap (_ => f)
   }
 
-  // implicit def BoxToBoxR[A](box: Box[A]): BoxR[A] = box.asBoxR
-  // implicit def BoxToBoxW[A](box: Box[A]): BoxW[A] = box.asBoxW
-  // implicit def BoxToBoxM[A](box: Box[A]): BoxM[A] = box.asBoxM
+  implicit def BoxToBoxR[A](box: Box[A]): BoxR[A] = box.r
+  implicit def BoxToBoxW[A](box: Box[A]): BoxW[A] = box.w
+  implicit def BoxToBoxM[A](box: Box[A]): BoxM[A] = box.m
 }
