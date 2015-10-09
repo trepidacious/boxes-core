@@ -35,11 +35,11 @@ object RevisionApp extends App {
 
   println("Changed sources in normal transaction: " + atomic{changedSources()})
 
-  val upperCase = atomic{cal{name().map(_.toUpperCase)}}
+  val upperCase = name().map(_.toUpperCase)
 
-  println(atomic(upperCase()))
+  println(atomic(upperCase))
   atomic(name() = "alice")
-  println(atomic(upperCase()))
+  println(atomic(upperCase))
 
   val upperCaseReportSources = atomic{create("ucrs")}
   val ucrsReaction = atomic{createReaction{
