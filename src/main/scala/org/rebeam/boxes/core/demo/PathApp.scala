@@ -1,7 +1,6 @@
 package org.rebeam.boxes.core.demo
 
 import org.rebeam.boxes.core._
-import org.rebeam.boxes.core.reaction._
 import BoxUtils._
 import BoxTypes._
 import BoxScriptImports._
@@ -10,6 +9,7 @@ import scalaz._
 import Scalaz._
 
 class Person(val name: Box[String], val friend: Box[Option[Person]])
+
 object Person {
   def apply() = for {
     name <- create("Unnamed")
@@ -17,7 +17,7 @@ object Person {
   } yield new Person(name, friend)
 }
 
-object PathReactionApp extends App {
+object PathApp extends App {
 
   val a = atomic(Person())
   val b = atomic(Person())
@@ -33,11 +33,11 @@ object PathReactionApp extends App {
     _ <- b.friend() = Some(c)
   } yield ())
 
-  val friendsFriend = atomic(Path(for {
-    f <- a.friend()
-  } yield f.map(_.friend)))
+  // val friendsFriend = pathToOptionB(for {
+  //   f <- a.friend()
+  // } yield f.map(_.friend))
 
-//  val friendsFriend = atomic(Path(a.friend().map(_.map(_.friend))))
+  val friendsFriend = pathToOptionB(a.friend().map(_.map(_.friend)))
 
   println(atomic(for {
     f <- friendsFriend()
@@ -56,7 +56,6 @@ object PathReactionApp extends App {
     name <- f traverseU (_.name())   //Use traverse to get from Option[Person] and Person => BoxScript[String] to BoxScript[Option[String]]
   } yield name
   ))
-
 
   println(atomic(c.name()))
 
