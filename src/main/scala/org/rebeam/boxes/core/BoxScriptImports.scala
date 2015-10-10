@@ -110,6 +110,10 @@ object BoxScriptImports {
   //Accepting a box directly
   def pathToOptionB[T](p: BoxScript[Option[Box[Option[T]]]]): BoxM[Option[T]] = pathToOption(p.map(_.map(_.m)))
 
+  // implicit class omapOnBoxScriptOption[A, B](s: BoxScript[Option[A]]) {
+  //   def omap(field: A => Box[B]): BoxScript[Option[Box[B]]] = s.map(_.map(field))
+  // }
+
   implicit def BoxToBoxR[A](box: Box[A]): BoxR[A] = box.r
   implicit def BoxToBoxW[A](box: Box[A]): BoxW[A] = box.w
   implicit def BoxToBoxM[A](box: Box[A]): BoxM[A] = box.m
