@@ -1,8 +1,5 @@
 package org.rebeam.boxes.core
 
-import org.rebeam.boxes.core.data.ListIndices
-import org.rebeam.boxes.core.reaction.Path
-import org.rebeam.boxes.core.util.ImmediateExecutor
 import org.scalatest.WordSpec
 
 class BoxSpec extends WordSpec {
