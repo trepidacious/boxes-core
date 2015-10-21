@@ -21,12 +21,14 @@ object Observer {
     def observe(r: Revision) = o(r)
   }
 
-  def apply[A](script: BoxScript[A], effect: A => Unit, scriptExe: Executor = Observer.defaultExecutor, effectExe: Option[Executor] = None, onlyMostRecent: Boolean = true): Observer = 
-    new ObserverDefault(script, effect, scriptExe, effectExe, onlyMostRecent)
+  def apply[A](script: BoxScript[A], effect: A => Unit, scriptExe: Executor = Observer.defaultExecutor, onlyMostRecent: Boolean = true): Observer = 
+    new ObserverDefault(script, effect, scriptExe, onlyMostRecent)
 
 }
 
-private class ObserverDefault[A](script: BoxScript[A], effect: A => Unit, scriptExe: Executor = Observer.defaultExecutor, effectExe: Option[Executor] = None, onlyMostRecent: Boolean = true) extends Observer {
+//TODO Review exact threading behaviour - check that we only execute one effect concurrently, regardless
+//of executor used.
+private class ObserverDefault[A](script: BoxScript[A], effect: A => Unit, scriptExe: Executor = Observer.defaultExecutor, onlyMostRecent: Boolean = true) extends Observer {
   private val revisionQueue = new scala.collection.mutable.Queue[Revision]()
   private val lock = Lock()
   private var state: Option[(Long, Set[Long])] = None
@@ -53,15 +55,7 @@ private class ObserverDefault[A](script: BoxScript[A], effect: A => Unit, script
           def run = {
             //FIXME if this has an exception, it kills the View (i.e. it won't run on any future revisions).
             val (a, reads) = BoxScriptInterpreter.runReadOnly(script, r)
-
-            //If we have a separate effect executor, use it, otherwise run effect immediately (here in script executor)
-            effectExe match {
-              case Some(e) => e.execute(new Runnable(){
-                def run = effect(a)
-              })
-              case None => effect(a)
-            }
-
+            effect(a)
             lock.run{
               state = Some((r.index, reads))
               go()
