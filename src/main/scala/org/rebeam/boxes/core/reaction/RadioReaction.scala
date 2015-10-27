@@ -8,12 +8,13 @@ import BoxScriptImports._
 import scalaz._
 import Scalaz._
 
+//It's worth noting this is probably not a great example of a reaction - just use a Box[Int]
 object RadioReaction {
 
   def apply(options: List[Box[Boolean]]): BoxScript[Reaction] = for {
     r <- createReaction{
       for {
-        cs <- changedSources()
+        cs <- changedSources
         oVals <- options traverseU { o => o() }
         _ <- desiredStates(options, oVals, cs) traverseU { case (b, v) => b() = v }
       } yield ()

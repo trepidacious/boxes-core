@@ -17,7 +17,7 @@ object ListIndex {
       s <- selected()
       i <- index()
 
-      cs <- changedSources()
+      cs <- changedSources
 
       consistent = (i, s, l) match {
         //Must select None in empty list

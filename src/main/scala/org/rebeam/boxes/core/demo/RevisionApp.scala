@@ -33,7 +33,7 @@ object RevisionApp extends App {
 
   println("Modified from " + atomic(modify(name, (s: String) => s + "-mod")))  
 
-  println("Changed sources in normal transaction: " + atomic{changedSources()})
+  println("Changed sources in normal transaction: " + atomic{changedSources})
 
   val upperCase = name().map(_.toUpperCase)
 
@@ -46,7 +46,7 @@ object RevisionApp extends App {
     for {
       n <- name()
       _ <- upperCaseReportSources() = n.toUpperCase
-      cs <- changedSources()
+      cs <- changedSources
       _ <- {println("Reaction changed sources: " + cs); name()}
     } yield ()
   }}

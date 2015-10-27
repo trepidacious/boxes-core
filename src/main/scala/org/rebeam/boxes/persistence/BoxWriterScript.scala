@@ -46,6 +46,10 @@ object BoxWriterScript {
       val next = toNext(cr)
       run(next, rev, writer)      
 
+    case -\/(RevisionIndexF(toNext)) =>
+      val next = toNext(rev.index)
+      run(next, rev, writer)
+
     case \/-(x) => (x.asInstanceOf[A], writer)
   }
 

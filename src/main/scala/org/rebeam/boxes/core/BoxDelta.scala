@@ -43,6 +43,7 @@ sealed trait BoxObserverDeltaF[+Next]
 //Cases usable in any delta functors - do not modify any box data
 case class ReadBoxDeltaF[Next, T](b: Box[T], toNext: T => Next) extends BoxDeltaF[Next] with BoxReaderDeltaF[Next] with BoxWriterDeltaF[Next] with BoxObserverDeltaF[Next]
 case class JustF[Next, T](t: T, toNext: T => Next) extends BoxDeltaF[Next] with BoxReaderDeltaF[Next] with BoxWriterDeltaF[Next] with BoxObserverDeltaF[Next]
+case class RevisionIndexF[Next, T](toNext: Long => Next) extends BoxDeltaF[Next] with BoxReaderDeltaF[Next] with BoxWriterDeltaF[Next] with BoxObserverDeltaF[Next]
 
 //Cases usable in any delta functor allowing modification of Box State
 case class CreateBoxDeltaF[Next, T](t: T, toNext: Box[T] => Next) extends BoxDeltaF[Next] with BoxReaderDeltaF[Next]
@@ -106,6 +107,7 @@ object BoxDeltaF {
       case ChangedSourcesF(toNext) => ChangedSourcesF(toNext andThen f)
 
       case JustF(t, toNext) => JustF(t, toNext andThen f)
+      case RevisionIndexF(toNext) => RevisionIndexF(toNext andThen f)
     }
   }
 
@@ -138,8 +140,11 @@ object BoxDeltaF {
 
   val nothing = just(())
 
-  def changedSources(): BoxScript[Set[Box[_]]] = 
+  val changedSources: BoxScript[Set[Box[_]]] = 
     liftF(ChangedSourcesF(identity): BoxDeltaF[Set[Box[_]]])(functor)
+
+  val revisionIndex: BoxScript[Long] =
+    liftF(RevisionIndexF(identity))(functor)
 
 }
 
@@ -173,6 +178,8 @@ object BoxReaderDeltaF {
       case GetCachedBoxF(id, toNext) => GetCachedBoxF(id, toNext andThen f)
 
       case EmbedBoxScript(script, toNext) => EmbedBoxScript(script, toNext andThen f)
+
+      case RevisionIndexF(toNext) => RevisionIndexF(toNext andThen f)
     }
   }
 
@@ -198,6 +205,9 @@ object BoxReaderDeltaF {
     = liftF(JustF(t, identity: T => T): BoxReaderDeltaF[T])(boxReaderDeltaFunctor)
 
   val nothing = just(())
+
+  val revisionIndex: BoxReaderScript[Long] =
+    liftF(RevisionIndexF(identity): BoxReaderDeltaF[Long])(boxReaderDeltaFunctor)
 
   val peek: BoxReaderScript[Token] 
     = liftF(PeekTokenF(identity[Token]): BoxReaderDeltaF[Token])(boxReaderDeltaFunctor)
@@ -257,6 +267,8 @@ object BoxWriterDeltaF {
 
       case CacheF(t, toNext) => CacheF(t, toNext andThen f)
       case CacheBoxF(box, toNext) => CacheF(box, toNext andThen f)
+
+      case RevisionIndexF(toNext) => RevisionIndexF(toNext andThen f)
     }
   }
 
@@ -277,6 +289,9 @@ object BoxWriterDeltaF {
 
   val nothing = just(())
 
+  val revisionIndex: BoxWriterScript[Long] =
+    liftF(RevisionIndexF(identity): BoxWriterDeltaF[Long])(boxWriterDeltaFunctor)
+
 }
 
 object BoxObserverDeltaF {
@@ -284,6 +299,7 @@ object BoxObserverDeltaF {
     override def map[A, B](bdf: BoxObserverDeltaF[A])(f: (A) => B): BoxObserverDeltaF[B] = bdf match {
       case ReadBoxDeltaF(b, toNext) => ReadBoxDeltaF(b, toNext andThen f)
       case JustF(t, toNext) => JustF(t, toNext andThen f)
+      case RevisionIndexF(toNext) => RevisionIndexF(toNext andThen f)
     }
   }
 
@@ -294,5 +310,8 @@ object BoxObserverDeltaF {
     = liftF(JustF(t, identity: T => T): BoxObserverDeltaF[T])(boxObserverDeltaFunctor)
 
   val nothing = just(())
+
+  val revisionIndex: BoxObserverScript[Long] =
+    liftF(RevisionIndexF(identity): BoxObserverDeltaF[Long])(boxObserverDeltaFunctor)
 
 }

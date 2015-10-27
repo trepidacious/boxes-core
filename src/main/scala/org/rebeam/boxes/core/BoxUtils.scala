@@ -5,6 +5,10 @@ object BoxUtils {
 
   def atomic[A](s: BoxScript[A]): A = Shelf.atomic(s)
 
+  def atomicToRevisionAndResult[A](s: BoxScript[A]): (Revision, A) = Shelf.atomicToRevisionAndResult(s)
+
+  def atomicToRevision(s: BoxScript[Unit]): Revision = Shelf.atomicToRevision(s)
+
   // implicit class NumericBox[N](v: Box[N])(implicit n: Numeric[N]) {
 
   //   def from(min: N) = v.applyReaction(v.get().map(n.max(min, _)))

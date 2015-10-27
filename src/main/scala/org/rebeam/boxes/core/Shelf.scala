@@ -37,6 +37,10 @@ object Shelf {
 
   def atomic[A](s: BoxScript[A]): A = runRepeated(s)._2
 
+  def atomicToRevisionAndResult[A](s: BoxScript[A]): (Revision, A) = runRepeated(s)
+
+  def atomicToRevision(s: BoxScript[Unit]): Revision = runRepeated(s)._1
+
   def runReader[A](s: BoxReaderScript[A], reader: TokenReader): Option[(Revision, A)] = {
     val baseRevision = currentRevision
 

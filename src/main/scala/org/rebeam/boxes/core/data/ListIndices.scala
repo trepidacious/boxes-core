@@ -18,7 +18,7 @@ object ListIndices {
       sel <- selected()
       ind <- indices()
 
-      cs <- changedSources()
+      cs <- changedSources
 
       consistent = (ind, sel, lis) match {
         case (i, s, Nil) if i.isEmpty && s.isEmpty => true                  //Must select nothing in empty list

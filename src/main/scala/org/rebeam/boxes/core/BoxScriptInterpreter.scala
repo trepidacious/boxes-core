@@ -33,6 +33,10 @@ object BoxScriptInterpreter {
       val next = toNext(t)
       runReadOnly(next, r, reads)
 
+    case -\/(RevisionIndexF(toNext)) =>
+      val next = toNext(r.index)
+      runReadOnly(next, r, reads)
+
     case -\/(s) => throw new RuntimeException("Invalid operation in read-only script: " + s)
 
     case \/-(x) => (x.asInstanceOf[A], reads)
@@ -100,6 +104,10 @@ object BoxScriptInterpreter {
 
     case -\/(ChangedSourcesF(toNext)) =>
       val next = toNext(changedSources)
+      run(next, rad, boxDeltas, runReactions, changedSources)
+
+    case -\/(RevisionIndexF(toNext)) =>
+      val next = toNext(rad.revision.index)
       run(next, rad, boxDeltas, runReactions, changedSources)
 
     case -\/(JustF(t, toNext)) =>

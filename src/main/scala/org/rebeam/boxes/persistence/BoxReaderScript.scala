@@ -140,6 +140,10 @@ object BoxReaderScript {
       reader.putBox(id, box.asInstanceOf[Box[Any]])
       run(next, rad, boxDeltas, reader)
 
+    case -\/(RevisionIndexF(toNext)) =>
+      val next = toNext(rad.revision.index)
+      run(next, rad, boxDeltas, reader)
+
     case \/-(x) => 
       //We apply all pending reactions at the end, using the entire accumulated
       //set of deltas from the entire BoxReaderScript, to get all newly created
