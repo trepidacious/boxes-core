@@ -6,6 +6,9 @@ import BoxUtils._
 import org.scalatest.Matchers
 import BoxScriptImports._
 
+import scalaz._
+import Scalaz._
+
 object PersistenceSpecUtils extends Matchers {
   def duplicate[T](t: T, format: Format[T]): Unit = {
     implicit val f = format
@@ -16,19 +19,12 @@ object PersistenceSpecUtils extends Matchers {
 }
 
 case class Person(name: Box[String], age: Box[Int]) {
-  def asString: BoxScript[String] = for {
-    n <- name()
-    a <- age()
-    } yield "Person(" + n + ", " + a + ")"
+  def asString: BoxScript[String] = (name() |@| age()){"Person(" + _ + ", " + _ + ")"}
 }
 
 object Person {
   def default: BoxScript[Person] = default("", 0)
-
-  def default(name: String, age: Int): BoxScript[Person] = for {
-    n <- create(name)
-    a <- create(age)
-  } yield Person(n, a)
+  def default(name: String, age: Int): BoxScript[Person] = (create(name) |@| create(age)){Person(_, _)}
 }
 
 case class CaseClass(s: String, i: Int)

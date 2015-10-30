@@ -62,14 +62,14 @@ case class ListLedger[T](list: Seq[T], rView: RecordView[T]) extends Ledger {
  * current List and RecordView in the provided refs.
  */
 object ListLedgerBox {
-  def apply[T](list: Box[_ <: Seq[T]], rView: Box[RecordView[T]]): BoxScript[Box[Ledger]] = for {
-    l <- list()
-    rv <- rView()
+  def apply[T](list: BoxR[_ <: Seq[T]], rView: BoxR[RecordView[T]]): BoxScript[Box[Ledger]] = for {
+    l <- list
+    rv <- rView
     v <- create(ListLedger(l, rv): Ledger)
     //Note this will do nothing if list and view are the same, avoiding cycles
     r <- createReaction(for {
-      l <- list()
-      rv <- rView()
+      l <- list
+      rv <- rView
       _ <- v() = ListLedger(l, rv): Ledger
     } yield())
     _ <- v.attachReaction(r)
@@ -179,14 +179,14 @@ trait MLens[T, V] extends Lens[T, V] {
 }
 
 /**
- * MLens based on a Box and an access closure
+ * MLens based on a BoxM and an access closure
  */
 object MBoxLens {
-  def apply[T, V](name: String, access: T => Box[V])(implicit valueManifest:Manifest[V]) = {
+  def apply[T, V](name: String, access: T => BoxM[V])(implicit valueManifest:Manifest[V]) = {
     new MLensDefault[T, V](
       name,
-      t => access(t).apply(),
-      (t, v) => access(t).update(v)
+      t => access(t).read,
+      (t, v) => access(t).write(v)
     )(valueManifest)
   }
 }
@@ -195,10 +195,10 @@ object MBoxLens {
  * Lens based on a Box and an access closure
  */
 object BoxLens {
-  def apply[T, V](name:String, access:(T => Box[V]))(implicit valueManifest:Manifest[V]) = {
+  def apply[T, V](name: String, access: (T => BoxR[V]))(implicit valueManifest:Manifest[V]) = {
     new LensDefault[T, V](
       name,
-      t => access(t).apply()
+      t => access(t)
     )(valueManifest)
   }
 }

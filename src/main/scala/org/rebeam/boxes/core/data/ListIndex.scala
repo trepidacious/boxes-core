@@ -8,12 +8,12 @@ import BoxScriptImports._
 case class ListIndex[T](selected: Box[Option[T]], index: Box[Option[Int]])
 
 object ListIndex {
-  def apply[T](list: Box[_ <: Seq[T]], selectFirstByDefault: Boolean = true): BoxScript[ListIndex[T]] = for {
+  def apply[T](list: BoxR[_ <: Seq[T]], selectFirstByDefault: Boolean = true): BoxScript[ListIndex[T]] = for {
     selected <- create(None: Option[T])
     index <- create(None: Option[Int])
 
     r <- createReaction(for {
-      l <- list()
+      l <- list
       s <- selected()
       i <- index()
 
@@ -63,10 +63,11 @@ object ListIndex {
         if (newIndex > -1) {
           index() = Some(newIndex)
 
+        //TODO - this requires a Box rather than a BoxR for list - can we replicate this effect somehow?
         //Selection is not in list, if just list has changed, use
         //index to look up new selection
-        } else if (cs == Set(list)) {
-          useIndex
+        // } else if (cs == Set(list)) {
+        //   useIndex
 
         //Otherwise just use default
         } else {

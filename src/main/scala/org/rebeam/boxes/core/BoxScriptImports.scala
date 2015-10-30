@@ -18,12 +18,12 @@ import Scalaz._
 object BoxScriptImports {
 
   //These methods on box only make sense when we are using a BoxScript  
-  implicit class BoxInScript[T](b: Box[T]) {
+  implicit class BoxInScript[A](b: Box[A]) {
 
     def attachReaction(reaction: Reaction) = BoxDeltaF.attachReactionToBox(reaction, b)
     def detachReaction(reaction: Reaction) = BoxDeltaF.detachReactionFromBox(reaction, b)
 
-    def applyReaction(rScript: BoxScript[T]) = for {
+    def applyReaction(rScript: BoxScript[A]) = for {
       r <- BoxScriptImports.createReaction(for {
         t <- rScript
         _ <- set(b, t)
@@ -31,8 +31,19 @@ object BoxScriptImports {
       _ <- b.attachReaction(r)
     } yield r
 
-    def modify(f: T => T) = BoxScriptImports.modify(b, f)
+    def modify(f: A => A) = BoxScriptImports.modify(b, f)
 
+    final def widen[B >: A]: BoxScript[B] = b.r.map((a: A) => a: B)
+
+    final def partial[B](pf: PartialFunction[A, B]): BoxScript[Option[B]] = optional(pf.lift)
+    final def optional[B](f: A => Option[B]): BoxScript[Option[B]] = b.r.map(f)
+
+  }
+
+  implicit class BoxOptionInScript[A](b: Box[Option[A]]) {
+    def default[B](d: A): BoxScript[A] = for {
+      oa <- b()
+    } yield oa.getOrElse(d)
   }
 
   //Smart constructors for BoxScript
@@ -56,6 +67,16 @@ object BoxScriptImports {
 
   implicit class BoxScriptPlus[A](s: BoxScript[A]) {
     final def andThen[B](f: => BoxScript[B]): BoxScript[B] = s flatMap (_ => f)
+    final def widen[B >: A]: BoxScript[B] = s.map((a: A) => a: B)
+    final def partial[B](pf: PartialFunction[A, B]): BoxScript[Option[B]] = optional(pf.lift)
+    final def optional[B](f: A => Option[B]): BoxScript[Option[B]] = s.map(f)
+  }
+
+  implicit class BoxScriptOptionPlus[A](s: BoxScript[Option[A]]) {
+    def map2[B](f: A => B): BoxScript[Option[B]] = s.map(_.map(f))
+    def default[B](d: A): BoxScript[A] = for {
+      oa <- s
+    } yield oa.getOrElse(d)
   }
 
   //Simplest path - we have a BoxScript that finds us a BoxM[T], and we will read and write using it.

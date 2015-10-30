@@ -9,12 +9,12 @@ case class ListIndices[T](selected: Box[Set[T]], indices: Box[Set[Int]])
 
 object ListIndices {
   
-  def apply[T](list: Box[_ <: Seq[T]], selectAllByDefault: Boolean = true): BoxScript[ListIndices[T]] = for {
+  def apply[T](list: BoxR[_ <: Seq[T]], selectAllByDefault: Boolean = true): BoxScript[ListIndices[T]] = for {
     selected <- create(Set.empty[T])
     indices <- create(Set.empty[Int])
 
     r <- createReaction(for {
-      lis <- list()
+      lis <- list
       sel <- selected()
       ind <- indices()
 
@@ -77,10 +77,11 @@ object ListIndices {
         if (!newIndices.isEmpty) {
           indices() = newIndices
 
+        //TODO - this requires a Box rather than a BoxR for list - can we replicate this effect somehow?
         //Selection is completely missing from list, if just list has changed, use
         //first index to look up new selection
-        } else if (cs == Set(list)) {
-          useFirstIndex
+        // } else if (cs == Set(list)) {
+        //   useFirstIndex
 
         //Otherwise just use default
         } else {
