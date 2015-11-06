@@ -11,6 +11,8 @@ import BoxUtils._
 import BoxTypes._
 import BoxScriptImports._
 
+import scalaz._
+import Scalaz._
 
 class BoxSpec extends WordSpec with PropertyChecks with ShouldMatchers {
 
@@ -157,7 +159,139 @@ class BoxSpec extends WordSpec with PropertyChecks with ShouldMatchers {
       //If we change the value in b, the reaction is run
       atomic { b() = "c" }
       atomic { reactionExecuted() } shouldBe true
+    }
 
+    "not run when another reaction makes a pointless write to a source Box (y = x^2 as an example)" in {
+      val x = atomic { create(1) }
+      val y = atomic { create(0) }
+      val squared = atomic {
+        createReaction(
+          for {
+            x <- x()
+            _ <- y() = x * x
+          } yield ()
+        )
+      }
+
+      atomic { y() } shouldBe 1
+
+      //Make a reaction that reads y, and a boolean box we can use to see if it is executed
+      val reactionExecuted = atomic { create(false) }
+      val reaction = atomic {
+        createReaction(
+          for {
+            y <- y()
+            _ <- reactionExecuted() = true
+          } yield ()
+        )
+      }
+
+      //Creating the reaction will run it
+      atomic { reactionExecuted() } shouldBe true
+
+      //Now clear the flag so we can see if reaction is executed again
+      atomic { reactionExecuted() = false}
+      atomic { reactionExecuted() } shouldBe false
+
+      //Setting x to -1 will lead squared reaction to write to y, but since -1 * -1 is still 1, this should not trigger our other reaction
+      atomic { x() = -1 }
+      atomic { y() } shouldBe 1
+      atomic { reactionExecuted() } shouldBe false
+
+      //Setting x to 2 will lead squared reaction to write to y and actually change it, triggering our other reaction
+      atomic { x() = 2 }
+      atomic { y() } shouldBe 4
+      atomic { reactionExecuted() } shouldBe true
+    }
+
+    "not change a target Box when it would write the same value to it (y = x^2 as an example)" in {
+      val x = atomic { create(1) }
+      val y = atomic { create(0) }
+      val squared = atomic {
+        createReaction(
+          for {
+            x <- x()
+            _ <- y() = x * x
+          } yield ()
+        )
+      }
+
+      atomic { y() } shouldBe 1
+      val yInitialRevision = Shelf.currentRevision
+      val yInitialIndex = yInitialRevision.indexOf(y)
+
+      //Setting x to -1 will lead squared reaction to write to y, but since -1 * -1 is still 1, this should not change y's index
+      atomic { x() = -1 }
+      atomic { y() } shouldBe 1
+
+      val yFinalRevision = Shelf.currentRevision
+      val yFinalIndex = yFinalRevision.indexOf(y)
+      assert (yFinalIndex.isDefined)
+      yFinalIndex shouldBe yInitialIndex
+
+      //Setting x to 2 will lead squared reaction to write to y and actually change it
+      atomic { x() = 2 }
+      atomic { y() } shouldBe 4
+
+      //y should have actually changed now
+      val yAlteredRevision = Shelf.currentRevision
+      val yAlteredIndex = yAlteredRevision.indexOf(y)
+      assert (yAlteredIndex.isDefined)
+      assert (yAlteredIndex != yInitialIndex)
+
+    }
+
+    "support bidirectional reactions (although BoxM is a better approach) (y = x + 1 as an example)" in {
+      val x = atomic { create(1) }
+      val y = atomic { create(1) }
+
+      //Create a pair of reactions, one for each direction
+      val (xToY, yToX) = atomic {
+        for {
+          xToY <- createReaction(
+            for {
+              x <- x()
+              _ <- y() = x + 1
+            } yield ()
+          )
+          yToX <- createReaction(
+            for {
+              y <- y()
+              _ <- x() = y - 1
+            } yield ()
+          )
+        } yield (xToY, yToX)
+      }
+
+      //xToY was registered first, so will have "won" the race to correct the initial inconsistent state
+      atomic { x() } shouldBe 1
+      atomic { y() } shouldBe 2
+
+      //Now try setting and checking values
+      atomic { x() = 2 }
+      atomic { x() } shouldBe 2
+      atomic { y() } shouldBe 3
+
+      atomic { y() = 10 }
+      atomic { x() } shouldBe 9
+      atomic { y() } shouldBe 10
+    }
+  }
+
+  "BoxM" should {
+    "support writable views of transformed data (y = x + 1 as an example)" in {
+      val x = atomic { create(1) }
+
+      //Note that if this transformation is not consistent then no failure occurs,
+      //but value of x (and so y) will depend on which one was set more recently
+      val y = BoxM(
+        read = x().map(_ + 1),
+        write = (a:Int) => x() = (a - 1)
+      )
+
+      atomic { y() } shouldBe 2
+      atomic { (x() = 2) andThen y() } shouldBe 3
+      atomic { (y() = 10) andThen x() } shouldBe 9
     }
   }
 
