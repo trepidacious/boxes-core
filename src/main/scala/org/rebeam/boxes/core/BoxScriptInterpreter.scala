@@ -66,13 +66,15 @@ object BoxScriptInterpreter {
       run(next, rad2, boxDeltas.append(deltas), runReactions, changedSources)
 
     case -\/(WriteBoxDeltaF(b, t, next)) =>
+      val changesValue = rad.get(b)._2 != t
+
       val (deltas, box) = rad.set(b, t)
       val rad2 = rad.appendDeltas(deltas)
-      //TODO - we can probably just skip calling react for efficiency if the write does not
+      //We can skip calling react for efficiency if the write does not
       //change box state. Note that the reactor itself uses its own mechanism
       //to observe writes when applying reactions, unlike in old mutable-txn
-      //system
-      val rad3 = if (runReactions) Reactor.react(rad2, deltas) else rad2
+      //system, so reactions will still get the correct changes.
+      val rad3 = if (runReactions && changesValue) Reactor.react(rad2, deltas) else rad2
       run(next, rad3, boxDeltas.append(deltas), runReactions, changedSources)
 
     case -\/(CreateReactionDeltaF(action, toNext)) =>

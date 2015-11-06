@@ -1,8 +1,70 @@
 package org.rebeam.boxes.core
 
-import org.scalatest.WordSpec
+import org.rebeam.boxes.core._
+import org.rebeam.boxes.persistence.formats._
+import org.rebeam.boxes.persistence.json.JsonPrettyIO
+import org.scalacheck.Arbitrary
+import org.scalatest._
+import org.scalatest.prop.PropertyChecks
 
-class BoxSpec extends WordSpec {
+import BoxUtils._
+import BoxTypes._
+import BoxScriptImports._
+
+
+class BoxSpec extends WordSpec with PropertyChecks with ShouldMatchers {
+
+  "Revision" should {
+    "skip writes with the same value, but not those with different values" in {
+      val (r1, b) = atomicToRevisionAndResult { create("b") }
+
+      val r2 = atomicToRevision { b() = "b" }
+
+      assert(r1.indexOf(b).isDefined)
+      r1.indexOf(b) shouldBe r2.indexOf(b)
+
+      val r3 = atomicToRevision { b() = "c" }
+
+      val a: Option[Boolean] = for {
+        r3b <- r3.indexOf(b)
+        r2b <- r2.indexOf(b)
+      } yield (r3b > r2b)
+
+      a shouldBe Some(true)
+
+    }
+  }
+
+  "Reaction" should {
+    "only run when sources have actually changed" in {
+      val b = atomic { create("b") }
+      val reactionExecuted = atomic { create(false) }
+
+      val reaction = atomic {
+        createReaction(
+          for {
+            b <- b()
+            _ <- reactionExecuted() = true
+          } yield ()
+        )
+      }
+
+      //Reaction runs when created, so it has executed
+      atomic { reactionExecuted() } shouldBe true
+
+      //Clear execution and check this works
+      atomic { (reactionExecuted() = false) andThen reactionExecuted() } shouldBe false
+
+      //Now write same value to Box b - since the value has not changed, the reaction is not run
+      atomic { b() = "b" }
+      atomic { reactionExecuted() } shouldBe false
+
+      //If we change the value in b, the reaction is run
+      atomic { b() = "c" }
+      atomic { reactionExecuted() } shouldBe true
+
+    }
+  }
 
   //FIXME we should try to test effect of GC - make sure that reactions
   //are not GCed as long as they have a source

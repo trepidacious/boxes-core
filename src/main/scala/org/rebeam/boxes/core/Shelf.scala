@@ -70,12 +70,17 @@ object Shelf {
         //If delta doesn't conflict, commit it
       } else if (current.canApplyDelta(rad)) {
 
+        //Keep track of new observers
+        val newObservers = new WeakHashSet[Observer]()
+
         //Watch new boxes and reactions, and add/remove observers as requested (new observers will see the updated revision
         //as their first)
         for (d <- rad.deltas.deltas) d match {
           case BoxCreated(box, _) => watcher.watch(Set(box))
           case ReactionCreated(reaction, _) => reactionWatcher.watch(Set(reaction))
-          case Observed(observer) => observers.add(observer)
+          case Observed(observer) => 
+            observers.add(observer)
+            newObservers.add(observer)
           case Unobserved(observer) => observers.remove(observer)
           case _ => ()
         }
@@ -83,16 +88,30 @@ object Shelf {
         //Make updated revision based on deltas plus GCed boxes and reactions
         val updated = current.updated(rad.deltas, watcher.deletes(), reactionWatcher.deletes())
 
-        //Move to the new revision
-        current = updated
+        updated match {
+          //If the revision actually requires updates, then move to the new revision and show observers, then return the new revision
+          case Some(updated) =>
+            //Move to the new revision
+            current = updated
 
-        //TODO we should do this outside lock. We would want to ensure that observers still receive revisions in strict
-        //order, for this we could use a queue. We are currently really relying on observers being quick...
-        //Notify observers.
-        observers.foreach(_.observe(updated))
+            //TODO we should do this outside lock. We would want to ensure that observers still receive revisions in strict
+            //order, for this we could use a queue. We are currently really relying on observers being quick...
+            //Notify observers.
+            observers.foreach(_.observe(updated))
 
-        //Return the new revision
-        Some(updated)
+            //Return the new revision
+            Some(updated)
+
+          //If the revision needs no updates, just return the current revision as the new one and only update NEW observers, to avoid pointless revisions
+          case None => 
+            //TODO we should do this outside lock. We would want to ensure that observers still receive revisions in strict
+            //order, for this we could use a queue. We are currently really relying on observers being quick...
+            //Notify observers.
+            newObservers.foreach(_.observe(current))
+
+            Some(current) 
+        }
+
 
         //Delta conflicts, do nothing and return no new revision
       } else {

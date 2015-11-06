@@ -22,7 +22,7 @@ class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[
 
   def scriptForReactionId(rid: Long): Option[BoxScript[Unit]] = reactionMap.get(rid)
 
-  private[core] def updated(deltas: BoxDeltas, deletes: List[Long], reactionDeletes: List[Long]) = {
+  private[core] def updated(deltas: BoxDeltas, deletes: List[Long], reactionDeletes: List[Long]): Option[Revision] = {
     val newIndex = index + 1
 
     //Remove boxes that have been GCed, then add new ones
@@ -35,7 +35,8 @@ class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[
         m.updated(box.id, newChange)      
     }
     val newMap = deltas.deltas.foldLeft(prunedMap) {
-      case (m, BoxWritten(box, value, _)) => mWithNewValue(m, box, value)
+      //We can skip writes that do not change box contents
+      case (m, BoxWritten(box, value, oldValue)) => if (value != oldValue) mWithNewValue(m, box, value) else m
       case (m, BoxCreated(box, value)) => mWithNewValue(m, box, value)
       case (m, _) => m
     }
@@ -61,7 +62,12 @@ class Revision(val index: Long, val map: Map[Long, BoxChange], reactionMap: Map[
     //Get new reaction graph if there is one in the deltas, otherwise keep our old one, then remove deleted reactions
     val newReactionGraph = deltas.reactionGraph.getOrElse(reactionGraph).removedReactions(reactionDeletes.toSet)
 
-    new Revision(newIndex, newMap, newReactionMap, newReactionGraph, prunedBoxReactions)
+    //Only create an actual new revision if something other than index has changed - otherwise return None to indicate no real changes
+    if (newMap == map && newReactionMap == reactionMap && newReactionGraph == reactionGraph && prunedBoxReactions == boxReactions) {
+      None
+    } else {
+      Some(new Revision(newIndex, newMap, newReactionMap, newReactionGraph, prunedBoxReactions))
+    }
   }
 
   def canApplyDelta(rad: RevisionAndDeltas) = {
