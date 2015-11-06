@@ -225,7 +225,7 @@ class LensRecordView[T](lenses: Lens[T,_]*) extends RecordView[T] {
   override def editable(record: Int, field: Int, recordValue: T) = just(lenses(field).isInstanceOf[MLens[_,_]])
   override def apply(record: Int, field: Int, recordValue: T) = lenses(field).asInstanceOf[Lens[T, Any]].apply(recordValue)
 
-  override def update(record:Int, field:Int, recordValue:T, fieldValue:Any) = {
+  override def update(record: Int, field: Int, recordValue: T, fieldValue: Any) = {
     lenses(field) match {
       case mLens:MLens[_,_] =>
         fieldValue match {
@@ -233,16 +233,16 @@ class LensRecordView[T](lenses: Lens[T,_]*) extends RecordView[T] {
           //TODO there HAS to be a better way to do this. The problem is that the AnyVals don't have getClass, so
           //we need to match to get the class, then pass it through. At least there is a known, fixed set of classes
           //here, and we know they must match the manifest exactly
-          case v:Boolean => tryUpdate(mLens, recordValue, fieldValue, classOf[Boolean])
-          case v:Byte => tryUpdate(mLens, recordValue, fieldValue, classOf[Byte])
-          case v:Char => tryUpdate(mLens, recordValue, fieldValue, classOf[Char])
-          case v:Double => tryUpdate(mLens, recordValue, fieldValue, classOf[Double])
-          case v:Long => tryUpdate(mLens, recordValue, fieldValue, classOf[Long])
-          case v:Int => tryUpdate(mLens, recordValue, fieldValue, classOf[Int])
-          case v:Short => tryUpdate(mLens, recordValue, fieldValue, classOf[Short])
+          case v: Boolean => tryUpdate(mLens, recordValue, fieldValue, classOf[Boolean])
+          case v: Byte => tryUpdate(mLens, recordValue, fieldValue, classOf[Byte])
+          case v: Char => tryUpdate(mLens, recordValue, fieldValue, classOf[Char])
+          case v: Double => tryUpdate(mLens, recordValue, fieldValue, classOf[Double])
+          case v: Long => tryUpdate(mLens, recordValue, fieldValue, classOf[Long])
+          case v: Int => tryUpdate(mLens, recordValue, fieldValue, classOf[Int])
+          case v: Short => tryUpdate(mLens, recordValue, fieldValue, classOf[Short])
 
           //Now we have an AnyRef, it is much easier
-          case fieldValueRef:AnyRef =>
+          case fieldValueRef: AnyRef =>
             if(!mLens.valueManifest.typeArguments.isEmpty) {
               throw new RuntimeException("Can only use MLens in LensRecordView for non-generic types")
             } else if (!mLens.valueManifest.runtimeClass.isAssignableFrom(fieldValueRef.getClass)) {
@@ -258,7 +258,7 @@ class LensRecordView[T](lenses: Lens[T,_]*) extends RecordView[T] {
     }
   }
 
-  private def tryUpdate(mLens:MLens[_,_], recordValue:T, fieldValue:Any, c:Class[_]) = {
+  private def tryUpdate(mLens: MLens[_,_], recordValue: T, fieldValue: Any, c: Class[_]) = {
     if (mLens.valueManifest.runtimeClass == c) {
       mLens.asInstanceOf[MLens[Any, Any]].update(recordValue, fieldValue)
     } else {
@@ -266,8 +266,8 @@ class LensRecordView[T](lenses: Lens[T,_]*) extends RecordView[T] {
     }
   }
 
-  override def fieldName(field:Int) = just(lenses(field).name)
-  override def fieldClass(field:Int) = just(lenses(field).valueManifest.runtimeClass)
+  override def fieldName(field: Int) = just(lenses(field).name)
+  override def fieldClass(field: Int) = just(lenses(field).valueManifest.runtimeClass)
   override def fieldCount() = just(lenses.size)
 
 }

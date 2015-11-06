@@ -38,12 +38,23 @@ object BoxScriptImports {
     final def partial[B](pf: PartialFunction[A, B]): BoxScript[Option[B]] = optional(pf.lift)
     final def optional[B](f: A => Option[B]): BoxScript[Option[B]] = b.r.map(f)
 
+    final def partialOrDefault[B](pf: PartialFunction[A, B])(d: B): BoxScript[B] = optionalOrDefault(pf.lift)(d)
+    final def optionalOrDefault[B](f: A => Option[B])(d: B): BoxScript[B] = for {
+      o <- b().map(f)
+    } yield o.getOrElse(d)
+
   }
 
   implicit class BoxOptionInScript[A](b: Box[Option[A]]) {
     def default[B](d: A): BoxScript[A] = for {
       oa <- b()
     } yield oa.getOrElse(d)
+
+    final def partialOrDefault[B](pf: PartialFunction[A, B])(d: B): BoxScript[B] = optionalOrDefault(pf.lift)(d)
+    final def optionalOrDefault[B](f: A => Option[B])(d: B): BoxScript[B] = for {
+      o <- b().map(_.flatMap(f))
+    } yield o.getOrElse(d)
+
   }
 
   //Smart constructors for BoxScript
@@ -70,6 +81,12 @@ object BoxScriptImports {
     final def widen[B >: A]: BoxScript[B] = s.map((a: A) => a: B)
     final def partial[B](pf: PartialFunction[A, B]): BoxScript[Option[B]] = optional(pf.lift)
     final def optional[B](f: A => Option[B]): BoxScript[Option[B]] = s.map(f)
+
+
+    final def partialOrDefault[B](pf: PartialFunction[A, B])(d: B): BoxScript[B] = optionalOrDefault(pf.lift)(d)
+    final def optionalOrDefault[B](f: A => Option[B])(d: B): BoxScript[B] = for {
+      o <- s.map(f)
+    } yield o.getOrElse(d)
   }
 
   implicit class BoxScriptOptionPlus[A](s: BoxScript[Option[A]]) {
@@ -77,6 +94,12 @@ object BoxScriptImports {
     def default[B](d: A): BoxScript[A] = for {
       oa <- s
     } yield oa.getOrElse(d)
+
+    final def partialOrDefault[B](pf: PartialFunction[A, B])(d: B): BoxScript[B] = optionalOrDefault(pf.lift)(d)
+    final def optionalOrDefault[B](f: A => Option[B])(d: B): BoxScript[B] = for {
+      o <- s.map(_.flatMap(f))
+    } yield o.getOrElse(d)
+
   }
 
   //Simplest path - we have a BoxScript that finds us a BoxM[T], and we will read and write using it.
