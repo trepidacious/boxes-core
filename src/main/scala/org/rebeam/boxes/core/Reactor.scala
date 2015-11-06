@@ -15,7 +15,7 @@ object Reactor extends Logging {
    */
   def react(rad: RevisionAndDeltas, deltas: BoxDeltas): RevisionAndDeltas = {
     //TODO reimplement functional react, currently have an imperative implementation,
-    //although the mutable state in reactIm shouldn't be visible externally
+    //although the mutable state in reactImpure shouldn't be visible externally
     reactImpure(rad, deltas)
   }
 
@@ -39,6 +39,10 @@ object Reactor extends Logging {
       case _ => s
     })
     val targetBoxes = scriptDeltas.deltas.foldLeft(Set.empty[Long])((s, d) => d match {
+      //Writing to a box always makes it a target, even if we write the same value it already contains.
+      //This is important since although the reaction may not CURRENTLY want to change the value, it 
+      //might conflict with another reaction that might change the value in future, and at that point
+      //we must run the reaction again to detect such conflicts.
       case BoxWritten(box, _, _) => s + box.id
       case _ => s
     })
@@ -57,10 +61,10 @@ object Reactor extends Logging {
 
     val changedSourcesForReaction = new scala.collection.mutable.HashMap[Long, scala.collection.mutable.Set[Box[_]]] with scala.collection.mutable.MultiMap[Long, Box[_]]
 
-    //Pend any newly created reactions, plus any reactions with the box as a source
+    //Pend any newly created reactions, plus any reactions where a source has been written with a different value
     deltas.deltas.foreach{
       case ReactionCreated(reaction, action) => reactionsPending += reaction.id
-      case BoxWritten(box, _, _) => {
+      case BoxWritten(box, newValue, oldValue) if newValue != oldValue => {
         val sourcingReactions = finalRad.reactionGraph.reactionsSourcingBox(box.id)
         reactionsPending ++= sourcingReactions
         //Also add written box to changed sources for the reactions
@@ -108,10 +112,10 @@ object Reactor extends Logging {
           conflictReaction <- finalRad.reactionGraph.reactionsTargettingBox(target) if (conflictReaction != nextReaction)
         } conflictReactions.add(conflictReaction)
 
-        //Now also pend any reactions that have had sources changed by this reaction,
+        //Now also pend any reactions that have had sources changed (to a different value) by this reaction,
         //and add the written boxes to changed sources for that reaction
         reactionDeltas.deltas.foreach{
-          case BoxWritten(box, _, _) =>
+          case BoxWritten(box, newValue, oldValue) if newValue != oldValue =>
             for (sourcingReaction <- finalRad.reactionGraph.reactionsSourcingBox(box.id) if (sourcingReaction != nextReaction)) {
               if (!reactionsPending.contains(sourcingReaction)) reactionsPending += sourcingReaction
               changedSourcesForReaction.addBinding(sourcingReaction, box)
