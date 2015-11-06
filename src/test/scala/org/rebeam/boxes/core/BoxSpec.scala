@@ -31,8 +31,103 @@ class BoxSpec extends WordSpec with PropertyChecks with ShouldMatchers {
       } yield (r3b > r2b)
 
       a shouldBe Some(true)
+    }
+  }
+
+  "Shelf" should {
+    "keep the same revision for read-only atomics" in {
+      val (r1, b) = atomicToRevisionAndResult { create("b") }
+      val (r2, b2) = atomicToRevisionAndResult { b() }
+
+      b2 shouldBe "b"
+      r1 shouldBe r2
+      r1.index shouldBe r2.index
+    }
+
+    "keep the same revision for atomics that only write the same existing values" in {
+      val (r1, b) = atomicToRevisionAndResult { create("b") }
+
+      val r2 = atomicToRevision { b()  = "b"}
+
+      r1 shouldBe r2
+      r1.index shouldBe r2.index
+    }
+
+    "increment the revision for atomics that write new values" in {
+      val (r1, b) = atomicToRevisionAndResult { create("b") }
+
+      val r2 = atomicToRevision { b()  = "c"}
+
+      assert(r2 != r1)
+      assert(r2.index > r1.index)
+    }
+
+    "notify observers of the revision where they are added, even when that revision is read-only" in {
+      val (r1, b) = atomicToRevisionAndResult { create("b") } 
+
+      var revisionSeen: Option[Revision] = None
+      val observer = Observer((r: Revision) => revisionSeen = Some(r))
+
+      //Just adding an observer is a read-only atomic
+      val revisionWhereAdded = atomicToRevision { observe(observer) }
+      revisionSeen shouldBe Some(revisionWhereAdded)
+
+      //Just for luck - the revision where we added should be the same as the revision where we created Box b, 
+      //since we didn't create a new revision by adding an observer
+      revisionWhereAdded shouldBe r1
+    }
+
+    "notify observers of only new revisions, with no notification for read-only atomics" in {
+      val (r1, b) = atomicToRevisionAndResult { create("b") } 
+
+      var revisionSeen: Option[Revision] = None
+      val observer = Observer((r: Revision) => revisionSeen = Some(r))
+
+      //Just adding an observer is a read-only atomic - we still get a notification
+      val revisionWhereAdded = atomicToRevision { observe(observer) }
+      revisionSeen shouldBe Some(revisionWhereAdded)
+
+      //Just for luck - the revision where we added should be the same as the revision where we created Box b, 
+      //since we didn't create a new revision by adding an observer
+      revisionWhereAdded shouldBe r1
+
+      //Now reset the revisionSeen and make some read-only atomics - observer should not be called
+      revisionSeen = None
+
+      val (r2, b2) = atomicToRevisionAndResult { b() }
+      b2 shouldBe "b"
+      revisionSeen shouldBe None
+      r2 shouldBe r1
+
+      //Writing same value is a read-only atomic
+      val r3 = atomicToRevision { b() = "b"}
+      revisionSeen shouldBe None
+      r3 shouldBe r1
+
+      //Finally make an actual write, and expect to see the new revision
+      val r4 = atomicToRevision { b() = "c"}
+      revisionSeen shouldBe Some(r4)
+      assert (r4 != r1)
+    }
+
+    "notify observers of new revision when they are registered in a revision that makes changes" in {
+      val (r1, b) = atomicToRevisionAndResult { create("b") } 
+
+      var revisionSeen: Option[Revision] = None
+      var bSeen: Option[String] = None
+
+      val observer = Observer((r: Revision) => {
+        revisionSeen = Some(r)
+        bSeen = Some(b(r))
+      })
+
+      val revisionWhereAdded = atomicToRevision { observe(observer) andThen (b() = "c") }
+
+      revisionSeen shouldBe Some(revisionWhereAdded)
+      bSeen shouldBe Some("c")
 
     }
+
   }
 
   "Reaction" should {
