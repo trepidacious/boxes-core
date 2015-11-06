@@ -276,6 +276,71 @@ class BoxSpec extends WordSpec with PropertyChecks with ShouldMatchers {
       atomic { x() } shouldBe 9
       atomic { y() } shouldBe 10
     }
+
+    "reject non-converging cyclic reactions (y = x + 1, x = y + 1 as an example)" in {
+      val x = atomic { create(1) }
+      val y = atomic { create(1) }
+
+      //Create a pair of reactions, one for each direction, which aren't compatible - they
+      //just keep incrementing x and y.
+      intercept[FailedReactionsException] {
+        atomic {
+          for {
+            xToY <- createReaction(
+              for {
+                x <- x()
+                _ <- y() = x + 1
+              } yield ()
+            )
+            yToX <- createReaction(
+              for {
+                y <- y()
+                _ <- x() = y + 1
+              } yield ()
+            )
+          } yield ()
+        }
+      }
+    }
+
+    def eventualConverging(initialValues: Int) = {
+      val x = atomic { create(initialValues) }
+      val y = atomic { create(initialValues) }
+
+      //Create a pair of reactions, one for each direction, which aren't compatible - they
+      //just keep incrementing x and y.
+      atomic {
+        for {
+          xToY <- createReaction(
+            for {
+              x <- x()
+              _ <- y() = Math.min(x + 1, Reactor.maxCycle * 2)
+            } yield ()
+          )
+          yToX <- createReaction(
+            for {
+              y <- y()
+              _ <- x() = Math.min(y + 1, Reactor.maxCycle * 2)
+            } yield ()
+          )
+        } yield ()
+      }
+
+      atomic { x() } shouldBe Reactor.maxCycle * 2
+      atomic { y() } shouldBe Reactor.maxCycle * 2
+
+    }
+
+    "accept eventually-converging cyclic reactions that use less than Reactor.maxCycle executions per reaction" in {
+      eventualConverging(1)
+    }
+
+    "reject eventually-converging cyclic reactions that exceed Reactor.maxCycle executions per reaction" in {
+      intercept[FailedReactionsException] {
+        eventualConverging(0)
+      }
+    }
+
   }
 
   "BoxM" should {
