@@ -133,6 +133,28 @@ class BoxSpec extends WordSpec with PropertyChecks with ShouldMatchers {
   }
 
   "Reaction" should {
+
+    "cache simple scripts (note that if result does not need to be cached, a plain BoxR is better)" in {
+      atomic {
+        for {
+          a <- create(2)
+          b <- cache(a().map(_ + 3))
+
+          test1 <- b().map(_ == 5)
+
+          c <- cache((a() |@| b()){_ + _})
+
+          test2 <- c().map(_ == 7)
+
+          _ <- a() = 4
+
+          test3 <- b().map(_ == 7)
+          test4 <- c().map(_ == 11)
+          } yield assert(test1 && test2 && test3 && test4)
+      }
+
+    }
+
     "only run when sources have actually changed" in {
       val b = atomic { create("b") }
       val reactionExecuted = atomic { create(false) }
@@ -341,136 +363,39 @@ class BoxSpec extends WordSpec with PropertyChecks with ShouldMatchers {
       }
     }
 
-  }
+    "support multiple reactions targetting the same Box, where they do not conflict" in {
+      atomic {
+        for {
+          x <- create(2d)
+          y <- create(0d)
 
-  "BoxM" should {
-    "support writable views of transformed data (y = x + 1 as an example)" in {
-      val x = atomic { create(1) }
+          r1 <- createReaction {
+            for {
+              x <- x()
+              _ <- y() = x * 2
+            } yield ()
+          }
 
-      //Note that if this transformation is not consistent then no failure occurs,
-      //but value of x (and so y) will depend on which one was set more recently
-      val y = BoxM(
-        read = x().map(_ + 1),
-        write = (a:Int) => x() = (a - 1)
-      )
+          x1 <- x()
+          y1 <- y()
 
-      atomic { y() } shouldBe 2
-      atomic { (x() = 2) andThen y() } shouldBe 3
-      atomic { (y() = 10) andThen x() } shouldBe 9
+          r2 <- createReaction {
+            for {
+              x <- x()
+              _ <- y() = x * 2
+            } yield ()
+          }
+
+          x2 <- x()
+          y2 <- y()
+        } yield {
+          assert(x1 == 2)
+          assert(x2 == 2)
+          assert(y1 == 4)
+          assert(y2 == 4)
+        }
+      }
     }
-  }
-
-  //FIXME we should try to test effect of GC - make sure that reactions
-  //are not GCed as long as they have a source
-
-  // case class Person(name: Box[String], age: Box[Int], friend: Box[Option[Person]], spouse: Box[Option[Person]], numbers: Box[List[Int]], accounts: Box[Map[String, Int]]) {
-  //   def asString(implicit txn: TxnR) = "Person(" + name() + ", " + age() + ", " + friend() + ", " + spouse() + ", " + numbers() + ", " + accounts + ")"
-  // }
-
-  // object Person {
-  //   def default(implicit txn: Txn): Person = {
-  //     Person(Box(""), Box(0), Box(None), Box(None), Box(Nil), Box(Map.empty))
-  //   }
-  //   def now(implicit shelf: Shelf) = shelf.transact(implicit txn => default)
-  // }
-
-  // "Cal" should {
-
-  //   "work in simple case" in {
-  //     implicit val shelf = ShelfDefault()
-
-  //     shelf.transact(implicit txn => {
-  //       val a = Box(2)
-  //       val b = Box.calc(implicit txn => a() + 3)
-
-  //       assert(b() === 5)
-
-  //       val c = Box.calc(implicit txn => a() + b())
-
-  //       assert(c() === 7)
-
-  //       a() = 4
-
-  //       assert(b() === 7)
-  //       assert(c() === 11)
-  //     })
-
-  //   }
-
-  //   "permit simple unidirectional paths" in {
-  //     implicit val shelf = ShelfDefault()
-
-  //     val cate = Person.now
-  //     cate.name.now() = "Cate"
-
-  //     val alice = Person.now
-  //     alice.name.now() = "Alice"
-
-  //     val bob = Person.now
-  //     bob.name.now() = "Bob"
-  //     bob.friend.now() = Some(cate)
-
-  //     val bobsFriendsName = BoxNow.calc(implicit txn => bob.friend().map(_.name()))
-
-  //     //Notes:
-  //     // You REALLY shouldn't use a var like "alterations"; if you want a similar effect in non-test code you should use an
-  //     // auto that will update a Box instead - this will be transactional and can be viewed etc. However for this test
-  //     // we want to use a view.
-  //     // Also in this case we really just want to see how many times the view is called, and so we use ImmediateExecutor to
-  //     // keep the view execution in the same thread used to run the transaction - everything is single threaded.
-  //     // Note we also set onlyMostRecent to false so we see all changes, since we want to check the
-  //     // view is executed at all appropriate points.
-  //     var alterations = 0
-  //     val aView = shelf.now.view(implicit txn => {
-  //       //Read this so that we are called when it changes
-  //       bobsFriendsName()
-  //       alterations += 1
-  //     }, ImmediateExecutor, false)
-
-  //     //Starts from 1, because view is called once when registered
-  //     assert(alterations === 1)
-
-  //     assert(bobsFriendsName.now() === Some("Cate"))
-
-  //     bob.friend.now() = Some(alice)
-
-  //     assert(alterations === 2)
-
-  //     assert(bobsFriendsName.now() === Some("Alice"))
-
-  //     //Should see no changes to bobsFriendsName when something not
-  //     //in the path changes, even if it is deeply referenced, or used to be part of path, etc.
-  //     cate.name.now() = "Katey"
-
-  //     assert(alterations === 2)
-
-  //     assert(bobsFriendsName.now() === Some("Alice"))
-
-  //     alice.name.now() = "Alicia"
-  //     assert(bobsFriendsName.now() === Some("Alicia"))
-
-  //     assert(alterations === 3)
-  //   }
-
-  // }
-
-  // "Box" should {
-
-  //   "support multiple reactions targetting the same Box, where they do not conflict" in {
-  //     implicit val shelf = ShelfDefault()
-  //     shelf.transact(implicit txn => {
-  //       val x = Box(2d)
-  //       val y = Box(0d)
-
-  //       txn.createReaction(implicit txn => y() = x() * 2)
-  //       assert(x() === 2d)
-  //       assert(y() === 4d)
-
-  //       txn.createReaction(implicit txn => y() = x() * 2)
-  //       assert(x() === 2d)
-  //       assert(y() === 4d)
-  //     })
-  //   }
 
   //   "throw FailedReactionsException if reactions conflict within a cycle" in {
   //     implicit val shelf = ShelfDefault()
@@ -558,6 +483,41 @@ class BoxSpec extends WordSpec with PropertyChecks with ShouldMatchers {
   //     })
   //   }
   // }
+
+  }
+
+  "BoxM" should {
+    "support writable views of transformed data (y = x + 1 as an example)" in {
+      val x = atomic { create(1) }
+
+      //Note that if this transformation is not consistent then no failure occurs,
+      //but value of x (and so y) will depend on which one was set more recently
+      val y = BoxM(
+        read = x().map(_ + 1),
+        write = (a:Int) => x() = (a - 1)
+      )
+
+      atomic { y() } shouldBe 2
+      atomic { (x() = 2) andThen y() } shouldBe 3
+      atomic { (y() = 10) andThen x() } shouldBe 9
+    }
+  }
+
+  //FIXME we should try to test effect of GC - make sure that reactions
+  //are not GCed as long as they have a source
+
+  // case class Person(name: Box[String], age: Box[Int], friend: Box[Option[Person]], spouse: Box[Option[Person]], numbers: Box[List[Int]], accounts: Box[Map[String, Int]]) {
+  //   def asString(implicit txn: TxnR) = "Person(" + name() + ", " + age() + ", " + friend() + ", " + spouse() + ", " + numbers() + ", " + accounts + ")"
+  // }
+
+  // object Person {
+  //   def default(implicit txn: Txn): Person = {
+  //     Person(Box(""), Box(0), Box(None), Box(None), Box(Nil), Box(Map.empty))
+  //   }
+  //   def now(implicit shelf: Shelf) = shelf.transact(implicit txn => default)
+  // }
+
+
 
   // "ListIndices" should {
 
