@@ -116,7 +116,9 @@ object Reactor extends Logging {
         //and add the written boxes to changed sources for that reaction
         reactionDeltas.deltas.foreach{
           case BoxWritten(box, newValue, oldValue) if newValue != oldValue =>
-            for (sourcingReaction <- finalRad.reactionGraph.reactionsSourcingBox(box.id) if (sourcingReaction != nextReaction)) {
+            //TODO this used to omit the reaction we just executed, with "if (sourcingReaction != nextReaction)" at end of for... however this means we don't spot reactions that
+            //will trigger themselves infinitely, and just run them once instead. Is the new behaviour the best one?
+            for (sourcingReaction <- finalRad.reactionGraph.reactionsSourcingBox(box.id)) {
               if (!reactionsPending.contains(sourcingReaction)) reactionsPending += sourcingReaction
               changedSourcesForReaction.addBinding(sourcingReaction, box)
             }
