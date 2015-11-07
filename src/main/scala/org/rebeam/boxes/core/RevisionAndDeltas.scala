@@ -56,7 +56,7 @@ case class RevisionAndDeltas(revision: Revision, deltas: BoxDeltas) {
   def appendScript[A](script: BoxScript[A], runReactions: Boolean = true, changedSources: Set[Box[_]] = Set.empty): (RevisionAndDeltas, A, BoxDeltas) = BoxScriptInterpreter.run[A](script, this, BoxDeltas.empty, runReactions, changedSources)
 
   def deltasWouldChange(newDeltas: BoxDeltas): Boolean = newDeltas.deltas.exists{
-    case BoxWritten(b, t, _) => get(b) != t
+    case BoxWritten(b, newValue, oldValue) => newValue != oldValue
     case ReactionCreated(_, _) => true
     case BoxCreated(_, _) => true
     case Observed(_) => true
