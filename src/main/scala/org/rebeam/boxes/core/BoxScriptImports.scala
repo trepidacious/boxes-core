@@ -155,6 +155,19 @@ object BoxScriptImports {
   //Accepting a box directly
   def pathToOptionB[T](p: BoxScript[Option[Box[Option[T]]]]): BoxM[Option[T]] = pathToOption(p.map(_.map(_.m)))
 
+  //Cache a BoxScript result in a new Box
+  def cache[T](f: BoxScript[T]): BoxScript[Box[T]] = for {
+    v <- f
+    b <- create(v)
+    r <- createReaction{
+      for {
+        v <- f
+        _ <- b() = v
+      } yield ()
+    }
+    _ <- b.attachReaction(r)
+  } yield b
+
   // implicit class omapOnBoxScriptOption[A, B](s: BoxScript[Option[A]]) {
   //   def omap(field: A => Box[B]): BoxScript[Option[Box[B]]] = s.map(_.map(field))
   // }
