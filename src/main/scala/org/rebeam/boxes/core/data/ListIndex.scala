@@ -11,22 +11,31 @@ object ListIndexing {
 
   def listSetIntersection[T](l: List[T], s: Set[T]): Set[T] = s.intersect(l.toSet)
 
-  def setIsInList[T](l: BoxR[List[T]], s: BoxM[Set[T]]): BoxScript[Reaction] = for {
+  def selectFirstAsSet[T] = (l: List[T]) => l.headOption.toSet
+  def selectAllAsSet[T] = (l: List[T]) => l.toSet
+  def selectNoneAsSet[T] = (l: List[T]) => Set.empty[T]
+
+  def selectFirstAsOption[T] = (l: List[T]) => l.headOption
+  def selectNoneAsOption[T] = (l: List[T]) => None: Option[T]
+
+  def setIsInList[T](l: BoxR[List[T]], s: BoxM[Set[T]], selectIfEmpty: (List[T]) => Set[T] = selectNoneAsSet[T]): BoxScript[Reaction] = for {
     r <- createReaction {
       for {
         lv <- l
         sv <- s()
-        _ <- s() = listSetIntersection(lv, sv)
+        intersection = listSetIntersection(lv, sv)
+        withDefault = if (intersection.isEmpty) selectIfEmpty(lv) else intersection        
+        _ <- s() = withDefault
       } yield ()
     }
   } yield r
 
-  def optionIsInList[T](l: BoxR[List[T]], o: BoxM[Option[T]]): BoxScript[Reaction] = for {
+  def optionIsInList[T](l: BoxR[List[T]], o: BoxM[Option[T]], selectIfNone: (List[T]) => Option[T] = selectNoneAsOption[T]): BoxScript[Reaction] = for {
     r <- createReaction {
       for {
         lv <- l
         ov <- o()
-        _ <- o() = ov.filter(t => lv.contains(t))
+        _ <- o() = ov.filter(t => lv.contains(t)).orElse(selectIfNone(lv))
       } yield ()
     }
   } yield r

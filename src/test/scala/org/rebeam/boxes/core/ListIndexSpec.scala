@@ -32,7 +32,7 @@ class ListIndexSpec extends WordSpec with PropertyChecks with ShouldMatchers {
   def assertBox[A](a: BoxScript[A], expected: A): BoxScript[Unit] = a.map(x => assert(x == expected))
 
   "ListIndexing" should {
-    "keep selection set within list using setIsInList" in {
+    "keep selection set within list using setIsInList and no default selection" in {
       atomic {
         for {
           l <- create(List("a", "b", "c", "d", "e", "f"))
@@ -73,7 +73,129 @@ class ListIndexSpec extends WordSpec with PropertyChecks with ShouldMatchers {
       }
     }
 
-    "keep selection option within list using optionIsInList" in {
+    "keep selection set within list using setIsInList and selecting first by default" in {
+      atomic {
+        for {
+          l <- create(List("a", "b", "c", "d", "e", "f"))
+          s <- create(Set("a", "b", "c", "f"))
+
+          r <- ListIndexing.setIsInList(l, s, ListIndexing.selectFirstAsSet[String])
+
+          _ <- modifyBox(l, (l: List[String]) => l.tail)
+          _ <- assertBox(s, Set("b", "c", "f"))
+
+          _ <- modifyBox(l, (l: List[String]) => l.tail)
+          _ <- assertBox(s, Set("c", "f"))
+
+          _ <- modifyBox(l, (l: List[String]) => l.tail)
+          _ <- assertBox(s, Set("f"))
+
+          _ <- modifyBox(l, (l: List[String]) => l.tail)
+          _ <- assertBox(s, Set("f"))
+
+          _ <- l() = List("f", "f", "f")
+          _ <- assertBox(s, Set("f"))
+
+          _ <- l() = List()
+          _ <- assertBox(s, Set[String]())
+
+          _ <- l() = List("f", "f", "f")
+          _ <- assertBox(s, Set[String]("f"))
+
+          _ <- s() = Set("f")
+          _ <- assertBox(s, Set("f"))
+
+          //Different behaviour here when selecting first by default
+          _ <- l() = List("A", "B", "C")
+          _ <- assertBox(s, Set("A"))
+
+          _ <- s() = Set("A", "C", "D")
+          _ <- assertBox(s, Set("A", "C"))
+
+          //Selecting outside the list should select first
+          _ <- s() = Set("X")
+          _ <- assertBox(s, Set("A"))
+
+          //Select something valid should work, then selecting nothing should select first instead
+          _ <- s() = Set("B")
+          _ <- assertBox(s, Set("B"))
+          _ <- s() = Set.empty[String]
+          _ <- assertBox(s, Set("A"))
+
+          //Selecting something or nothing in an empty list should select nothing
+          _ <- l() = List()
+          _ <- assertBox(s, Set[String]())
+          _ <- s() = Set("B")
+          _ <- assertBox(s, Set[String]())
+          _ <- s() = Set.empty[String]
+          _ <- assertBox(s, Set[String]())          
+
+        } yield ()
+      }
+    }
+
+    "keep selection set within list using setIsInList and selecting all by default" in {
+      atomic {
+        for {
+          l <- create(List("a", "b", "c", "d", "e", "f"))
+          s <- create(Set("a", "b", "c", "f"))
+
+          r <- ListIndexing.setIsInList(l, s, ListIndexing.selectAllAsSet[String])
+
+          _ <- modifyBox(l, (l: List[String]) => l.tail)
+          _ <- assertBox(s, Set("b", "c", "f"))
+
+          _ <- modifyBox(l, (l: List[String]) => l.tail)
+          _ <- assertBox(s, Set("c", "f"))
+
+          _ <- modifyBox(l, (l: List[String]) => l.tail)
+          _ <- assertBox(s, Set("f"))
+
+          _ <- modifyBox(l, (l: List[String]) => l.tail)
+          _ <- assertBox(s, Set("f"))
+
+          _ <- l() = List("f", "f", "f")
+          _ <- assertBox(s, Set("f"))
+
+          _ <- l() = List()
+          _ <- assertBox(s, Set[String]())
+
+          _ <- l() = List("f", "f", "f")
+          _ <- assertBox(s, Set[String]("f"))
+
+          _ <- s() = Set("f")
+          _ <- assertBox(s, Set("f"))
+
+          //Different behaviour here when selecting all by default
+          _ <- l() = List("A", "B", "C")
+          _ <- assertBox(s, Set("A", "B", "C"))
+
+          _ <- s() = Set("A", "C", "D")
+          _ <- assertBox(s, Set("A", "C"))
+
+          //Selecting outside the list should select all
+          _ <- s() = Set("X")
+          _ <- assertBox(s, Set("A", "B", "C"))
+
+          //Select something valid should work, then selecting nothing should select all instead
+          _ <- s() = Set("B")
+          _ <- assertBox(s, Set("B"))
+          _ <- s() = Set.empty[String]
+          _ <- assertBox(s, Set("A", "B", "C"))
+
+          //Selecting something or nothing in an empty list should select nothing
+          _ <- l() = List()
+          _ <- assertBox(s, Set[String]())
+          _ <- s() = Set("B")
+          _ <- assertBox(s, Set[String]())
+          _ <- s() = Set.empty[String]
+          _ <- assertBox(s, Set[String]())          
+
+        } yield ()
+      }
+    }
+
+    "keep selection option within list using optionIsInList and no default selection" in {
       atomic {
         for {
           l <- create(List("a", "b", "c", "d", "e", "f"))
@@ -107,6 +229,55 @@ class ListIndexSpec extends WordSpec with PropertyChecks with ShouldMatchers {
         } yield ()
       }
     }
+
+    "keep selection option within list using optionIsInList and selecting first by default" in {
+      atomic {
+        for {
+          l <- create(List("a", "b", "c", "d", "e", "f"))
+          s <- create("a".some)
+
+          r <- ListIndexing.optionIsInList(l, s, ListIndexing.selectFirstAsOption[String])
+
+          _ <- assertBox(s, "a".some)
+
+          _ <- modifyBox(l, (l: List[String]) => l.tail)
+          _ <- assertBox(s, "b".some)
+
+          _ <- s() = "c".some
+          _ <- assertBox(s, "c".some)
+
+          _ <- modifyBox(l, (l: List[String]) => l.tail)
+          _ <- assertBox(s, "c".some)
+
+          _ <- modifyBox(l, (l: List[String]) => l.tail)
+          _ <- assertBox(s, "d".some)
+
+          _ <- l() = List("c", "c", "c")
+          _ <- assertBox(s, "c".some)
+
+          _ <- l() = List()
+          _ <- assertBox(s, None)
+
+          _ <- l() = List("A", "B", "C")
+          _ <- assertBox(s, "A".some)
+
+          _ <- s() = "B".some
+          _ <- assertBox(s, "B".some)
+
+          _ <- s() = "X".some
+          _ <- assertBox(s, "A".some)
+
+          _ <- l() = List()
+          _ <- assertBox(s, None)
+          _ <- s() = "X".some
+          _ <- assertBox(s, None)
+          _ <- s() = None
+          _ <- assertBox(s, None)
+
+        } yield ()
+      }
+    }
+
 
     "read/write selection as index: Option[Int] using indexFromListAndOption" in {
       atomic {
@@ -227,8 +398,8 @@ class ListIndexSpec extends WordSpec with PropertyChecks with ShouldMatchers {
 
           //Select multiple valid elements and some invalid elements and check selected indices
           _ <- s() = Set("A", "B", "c", "d", "X", "Y")
-          _ <- assertBox(s, Set("c", "d"))
-          _ <- assertBox(i(), Set(1, 2))
+          _ <- assertBox(s, Set("A", "B", "c", "d", "X", "Y"))  //Note we are not constraining selection to be in list, so it keeps the invalid selections
+          _ <- assertBox(i(), Set(1, 2))                        //But the indices only reflect the valid ones
 
         } yield ()
       }      
