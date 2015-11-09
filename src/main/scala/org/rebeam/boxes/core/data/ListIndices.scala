@@ -77,11 +77,10 @@ object ListIndices {
         if (!newIndices.isEmpty) {
           indices() = newIndices
 
-        //TODO - this requires a Box rather than a BoxR for list - can we replicate this effect somehow?
-        //Selection is completely missing from list, if just list has changed, use
-        //first index to look up new selection
-        // } else if (cs == Set(list)) {
-        //   useFirstIndex
+        //Selection is completely missing from list, neither selected nor indices has
+        //changed, then we assume just list has changed, and use first index to look up new selection
+        } else if (!cs.contains(selected) && !cs.contains(indices)) {
+          useFirstIndex
 
         //Otherwise just use default
         } else {
