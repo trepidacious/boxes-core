@@ -58,18 +58,20 @@ object BoxScriptImports {
   }
 
   //Smart constructors for BoxScript
-  def create[T](t: T)                               = BoxDeltaF.create(t)
-  def set[T](box: Box[T], t: T)                     = BoxDeltaF.set(box, t)
-  def get[T](box: Box[T])                           = BoxDeltaF.get(box)
-  def observe(observer: Observer)                   = BoxDeltaF.observe(observer)
-  def unobserve(observer: Observer)                 = BoxDeltaF.unobserve(observer)
-  def createReaction(action: BoxScript[Unit])       = BoxDeltaF.createReaction(action)
-  def attachReactionToBox(r: Reaction, b: Box[_])   = BoxDeltaF.attachReactionToBox(r, b)
-  def detachReactionFromBox(r: Reaction, b: Box[_]) = BoxDeltaF.detachReactionFromBox(r, b)
-  val changedSources                                = BoxDeltaF.changedSources
-  def just[T](t: T)                                 = BoxDeltaF.just(t)
-  val nothing                                       = BoxDeltaF.nothing
-  val revisionIndex                                 = BoxDeltaF.revisionIndex
+  def create[T](t: T): BoxScript[Box[T]]              = BoxDeltaF.create(t)
+  def set[T](box: Box[T], t: T): BoxScript[Unit]      = BoxDeltaF.set(box, t)
+  def get[T](box: Box[T]): BoxScript[T]               = BoxDeltaF.get(box)
+  def observe(observer: Observer): BoxScript[Unit]    = BoxDeltaF.observe(observer)
+  def unobserve(observer: Observer): BoxScript[Unit]  = BoxDeltaF.unobserve(observer)
+
+  def createReaction(action: BoxScript[Unit]): BoxScript[Reaction]          = BoxDeltaF.createReaction(action)
+  def attachReactionToBox(r: Reaction, b: Box[_]): BoxScript[Unit]          = BoxDeltaF.attachReactionToBox(r, b)
+  def detachReactionFromBox(r: Reaction, b: Box[_]): BoxScript[Unit]        = BoxDeltaF.detachReactionFromBox(r, b)
+  
+  val changedSources: BoxScript[Set[Box[_]]]          = BoxDeltaF.changedSources
+  def just[T](t: T): BoxScript[T]                     = BoxDeltaF.just(t)
+  val nothing: BoxScript[Unit]                        = BoxDeltaF.nothing
+  val revisionIndex: BoxScript[Long]                  = BoxDeltaF.revisionIndex
 
   def modify[T](b: BoxM[T], f: T => T) = for {
     o <- b.read

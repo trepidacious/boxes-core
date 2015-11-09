@@ -71,14 +71,14 @@ private class ObserverDefault[A](script: BoxScript[A], effect: A => Unit, script
   private var state: Option[(Long, Set[Long])] = None
   private var pending = false;
 
-  private def relevant(r: Revision) = {
+  private def relevant(r: Revision): Boolean = {
     state match {
       case None => true
       case Some((index, reads)) => reads.iterator.flatMap(r.indexOfId(_)).exists(_>index)
     }
   }
   
-  private def go() {
+  private def go(): Unit = {
     
     //If we have more revisions pending, try to run the next
     if (!revisionQueue.isEmpty) {
