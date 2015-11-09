@@ -76,6 +76,8 @@ object BoxScriptImports {
     _ <- b.write(f(o))
   } yield o
 
+  def modifyBox[T](b: BoxM[T], f: T => T) = modify(b, f)
+
   implicit class BoxScriptPlus[A](s: BoxScript[A]) {
     final def andThen[B](f: => BoxScript[B]): BoxScript[B] = s flatMap (_ => f)
     final def widen[B >: A]: BoxScript[B] = s.map((a: A) => a: B)
