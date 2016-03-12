@@ -6,7 +6,7 @@ class CoalescingResponder(response: => Unit, fusionInterval: Long = 5, tickInter
 
   var lastRequestTime = 0L
   var requestPending = false
-  var executor = Executors.newSingleThreadScheduledExecutor(new DaemonThreadFactory())
+  val executor = Executors.newSingleThreadScheduledExecutor(new DaemonThreadFactory())
   val lock = new Object()
 
   {
