@@ -283,6 +283,13 @@ class JsonTokenReader(reader: Reader) extends TokenReader {
     parser.pull match {
       case JsonParser.OpenObj => OpenDict()
       case JsonParser.CloseObj => CloseDict
+      //If we get back a field we output for an id, just ignore it, we don't need it
+      case JsonParser.FieldStart(name) if name.startsWith("_") && name.endsWith("_id") => parser.pull match {
+        case JsonParser.IntVal(_) => pullToken()
+        case JsonParser.DoubleVal(_) => pullToken()
+        case JsonParser.StringVal(_) => pullToken()
+        case _ => throw new IncorrectTokenException("Got a field '" + name + "' expected to be a LinkId, but had a field value that was not an Int, Double or String")
+      }
       case JsonParser.FieldStart(name) => DictEntry(name)
       case JsonParser.End => throw new IncorrectTokenException("Reached end of Json data")
       case JsonParser.StringVal(value) => StringToken(value)
@@ -307,7 +314,7 @@ class JsonReaderWriterFactory(pretty: Boolean = false) extends ReaderWriterFacto
 }
 
 class JsonIO(pretty: Boolean = false) extends IO(new JsonReaderWriterFactory(pretty)) {
-  def toJsonString[T :Writes](t: T) = {
+  def toJsonString[T: Writes](t: T) = {
     val sw = new StringWriter()
     val w = new JsonTokenWriter(sw, pretty)
     Shelf.runWriter(Writing.write(t), w)
