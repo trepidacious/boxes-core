@@ -25,7 +25,10 @@ trait BoxDeltas {
   def scriptForReactionId(rid: Long): Option[BoxScript[Unit]]
 }
 
-/** A BoxDeltas that caches all WriteBox deltas in a map to make boxWrite more efficient */
+/** 
+ * A BoxDeltas that caches all WriteBox deltas in a map to make boxWrite more efficient,
+ * as well as tracking the most recent reaction graph and a map from ids to scripts
+ */
 private class BoxDeltasCachedWrites(val deltas: Vector[BoxDelta], writes: Map[Box[Any], Any], val reactionGraph: Option[ReactionGraph], val idToScriptMap: Map[Long, BoxScript[Unit]]) extends BoxDeltas {
 
   def append(d: BoxDeltas): BoxDeltas = {

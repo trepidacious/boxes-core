@@ -22,22 +22,37 @@ object Shelf {
 
   def currentRevision = lock.read { current }
 
-  def run[A](s: BoxScript[A]): Option[(Revision, A)] = {
+  /**
+   * Run a script, producing extra results. If the transaction fails, None is returned.
+   * Otherwise Some(revision, result, script deltas, all deltas) is returned. Script
+   * deltas are the deltas applied directly by the script. all deltas are the deltas
+   * from the script AND any reactions triggered by the script (including reactions
+   * having boxes as sources that are written to by the script, and any reactions 
+   * added by the script).
+   */
+  private def runExtra[A](s: BoxScript[A]): Option[(Revision, A, BoxDeltas, BoxDeltas)] = {
     val baseRevision = currentRevision
 
     val baseRad = RevisionAndDeltas(baseRevision, BoxDeltas.empty)
 
-    val (finalRad, result, _) = baseRad.appendScript(s)
+    val (finalRad, result, scriptDeltas) = baseRad.appendScript(s)
 
-    commit(RevisionAndDeltas(baseRevision, finalRad.deltas)).map((_, result))
+    commit(RevisionAndDeltas(baseRevision, finalRad.deltas)).map((_, result, scriptDeltas, finalRad.deltas))
   }
+
+  def run[A](s: BoxScript[A]): Option[(Revision, A)] = runExtra(s).map(r => (r._1, r._2))
 
   def runRepeated[A](s: BoxScript[A]): (Revision, A) =
     Range(0, retries).view.map(_ => run(s)).find(o => o.isDefined).flatten.getOrElse(throw new RuntimeException("Transaction failed too many times"))
 
+  def runRepeatedExtra[A](s: BoxScript[A]): (Revision, A, BoxDeltas, BoxDeltas) =
+    Range(0, retries).view.map(_ => runExtra(s)).find(o => o.isDefined).flatten.getOrElse(throw new RuntimeException("Transaction failed too many times"))
+
   def atomic[A](s: BoxScript[A]): A = runRepeated(s)._2
 
   def atomicToRevisionAndResult[A](s: BoxScript[A]): (Revision, A) = runRepeated(s)
+
+  def atomicToRevisionAndResultAndDeltas[A](s: BoxScript[A]): (Revision, A, BoxDeltas, BoxDeltas) = runRepeatedExtra(s)
 
   def atomicToRevision(s: BoxScript[Unit]): Revision = runRepeated(s)._1
 
