@@ -5,49 +5,28 @@ import org.rebeam.boxes.core._
 import BoxTypes._
 
 object BasicFormats {
-
-  implicit def writesOption[T](implicit writes: Writes[T]): Writes[Option[T]] = new Writes[Option[T]] {
-    import BoxWriterDeltaF._
-
-    def write(option: Option[T]) = {
-      option match {
-        case Some(v) => writes.write(v)
-        case None => put(NoneToken)
-      }
-    }
-  }
-
-  implicit def readsOption[T](implicit reads: Reads[T]) = new Reads[Option[T]] {
-    import BoxReaderDeltaF._
-
-    //Alternative form
-    // def read: BoxReaderScript[Option[T]] = peek flatMap (token => token match {
-    //   case NoneToken => pullExpected(NoneToken) map (_ => None)
-    //   case _ => reads.read map (Some(_))
-    // })
+  implicit def optionFormat[T](implicit format: Format[T]) = new Format[Option[T]] {
+    import BoxReaderDeltaF._    
 
     def read: BoxReaderScript[Option[T]] = for {
       t <- peek
       r <- t match {
         case NoneToken => pullExpected(NoneToken) map (_ => None)
-        case _ => reads.read map (Some(_))
+        case _ => format.read map (Some(_))
       } 
     } yield r
-
-  }
-
-  implicit def replacesOption[T](implicit replaces: Replaces[T]): Replaces[Option[T]] = new Replaces[Option[T]] {
-    import BoxReaderDeltaF._    
+    
+    def write(option: Option[T]) = {
+      option match {
+        case Some(v) => format.write(v)
+        case None => BoxWriterDeltaF.put(NoneToken)
+      }
+    }
+    
     def replace(option: Option[T], boxId: Long) = option match {
-      case Some(v) => replaces.replace(v, boxId)
+      case Some(v) => format.replace(v, boxId)
       case None => nothing
     }
-  }
-
-  implicit def optionFormat[T](implicit format: Format[T]) = new Format[Option[T]] {
-    override def read = readsOption[T].read
-    override def write(obj: Option[T]) = writesOption[T].write(obj)
-    override def replace(option: Option[T], boxId: Long) = replacesOption[T].replace(option, boxId)
   }
 
   /**
