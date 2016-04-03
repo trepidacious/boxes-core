@@ -1,11 +1,9 @@
 package org.rebeam.boxes.core
 
-import grizzled.slf4j.Logging
-
 import scala.collection.immutable.Set
 import BoxDelta._
 
-object Reactor extends Logging {
+object Reactor {
 
   val maxCycle = 10000
 
@@ -128,7 +126,7 @@ object Reactor extends Logging {
       } catch {
         //TODO If this is NOT a BoxException, need to respond better, but can't allow uncaught exception to just stop cycling
         case e:Exception => {
-          logger.error("Reaction failed", e)
+          // logger.error("Reaction failed", e)
 
           //Remove the reaction completely from the system, but remember that it failed
           finalRad = radWithReactionRemoved(finalRad, nextReaction)
@@ -156,7 +154,7 @@ object Reactor extends Logging {
 
       //If there are any deltas that change state, reaction is conflicting and fails
       if (finalRad.deltasWouldChange(deltas)) {
-        logger.error("Reaction id " + r + " conflicted")
+        // logger.error("Reaction id " + r + " conflicted")
         //Remove the reaction completely from the system, but remember that it failed
         finalRad = radWithReactionRemoved(finalRad, r)
         failedReactions.add(r)
@@ -164,7 +162,7 @@ object Reactor extends Logging {
     }
 
     if (!failedReactions.isEmpty) {
-      logger.debug("Failed Reactions: " + failedReactions)
+      // logger.debug("Failed Reactions: " + failedReactions)
       throw new FailedReactionsException()
     }
 
