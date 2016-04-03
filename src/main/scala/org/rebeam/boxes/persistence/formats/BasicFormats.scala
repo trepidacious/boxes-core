@@ -8,7 +8,7 @@ object BasicFormats {
   implicit def optionFormat[T](implicit format: Format[T]) = new Format[Option[T]] {
     import BoxReaderDeltaF._    
 
-    def read: BoxReaderScript[Option[T]] = for {
+    override def read: BoxReaderScript[Option[T]] = for {
       t <- peek
       r <- t match {
         case NoneToken => pullExpected(NoneToken) map (_ => None)
@@ -16,14 +16,14 @@ object BasicFormats {
       } 
     } yield r
     
-    def write(option: Option[T]) = {
+    override def write(option: Option[T]) = {
       option match {
         case Some(v) => format.write(v)
         case None => BoxWriterDeltaF.put(NoneToken)
       }
     }
     
-    def replace(option: Option[T], boxId: Long) = option match {
+    override def replace(option: Option[T], boxId: Long) = option match {
       case Some(v) => format.replace(v, boxId)
       case None => nothing
     }
