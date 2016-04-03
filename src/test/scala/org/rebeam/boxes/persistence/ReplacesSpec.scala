@@ -24,6 +24,7 @@ import BoxReplaces._
 import PrimReplaces._
 import CollectionReplaces._
 import BasicReplaces._
+import NodeReplaces._
 
 import scalaz._
 import Scalaz._
@@ -31,6 +32,8 @@ import Scalaz._
 import PersistenceSpecUtils._
 
 class ReplacesSpec extends WordSpec with PropertyChecks with ShouldMatchers {
+
+  
 
   def replaceAndTest[T, M](model: M, newValue: T, box: Box[T])(implicit writesT: Writes[T], readsT: Reads[T], replacesM: Replaces[M]): Unit = {
     //Check that box does not already have new value
@@ -94,6 +97,14 @@ class ReplacesSpec extends WordSpec with PropertyChecks with ShouldMatchers {
       val boxA = atomic { create("a") }
       val model: List[Option[Box[String]]] = List(None, Some(boxA), Some(boxA))
       replaceAndTest(model, "b", boxA)
+    }
+
+    "set string box in a Person (Node2)" in {
+      
+      // implicit val personReplaces = nodeReplaces2(Person.apply, Person.default)("name", "age")
+      // 
+      // val p = atomic { Person.default("a", 40) }
+      // replaceAndTest(p, "b", p.name)
     }
     
   }

@@ -128,6 +128,38 @@ object NodeFormats {
     }
   }
 
+  private def replaceField[T](n: Product, index: Int, boxId: Long)(implicit f: FormatAndReplaces[T]) = {
+    import BoxReaderDeltaF._
+
+    val box = n.productElement(index).asInstanceOf[Box[T]]
+  
+    //If this is our box, read a new value for it from tokens, set that new 
+    //value and we are done
+    if (box.id == boxId) {
+      for {
+        t <- peek
+        //If we have some data to read, read it and use values
+        _ <- if (t != EndToken) {
+          for {
+            newT <- f.read
+            _ <- set(box, newT)
+          } yield ()
+          
+        //There is no data left, so nothing to do - just return immediately
+        } else {
+          nothing            
+        }
+      } yield ()
+      
+    //If this is not our box, recurse to its contents
+    } else {
+      for {
+        t <- get(box)
+        _ <- f.replace(t, boxId)
+      } yield ()
+    }
+  }
+
 
   // Auto generated code for each different arity of Node
 
