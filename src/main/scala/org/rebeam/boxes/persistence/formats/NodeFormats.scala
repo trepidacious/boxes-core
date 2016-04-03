@@ -128,9 +128,9 @@ object NodeFormats {
     }
   }
 
-  private def replaceField[T](n: Product, index: Int, boxId: Long)(implicit f: FormatAndReplaces[T]) = {
+  private def replaceField[T](n: Product, index: Int, boxId: Long)(implicit f: Format[T]) = {
     import BoxReaderDeltaF._
-
+  
     val box = n.productElement(index).asInstanceOf[Box[T]]
   
     //If this is our box, read a new value for it from tokens, set that new 
@@ -160,8 +160,11 @@ object NodeFormats {
     }
   }
 
-
-  // Auto generated code for each different arity of Node
+  // ############################################################
+  // ############################################################
+  // ##  Auto generated code for each different arity of Node  ##
+  // ############################################################
+  // ############################################################
 
   def nodeFormat1[P1: Format, N <: Product](construct: (Box[P1]) => N, default: BoxScript[N])
       (name1: String,
@@ -204,6 +207,10 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+    } yield ()
 
   }
     
@@ -251,6 +258,11 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+    } yield ()
 
   }
     
@@ -300,6 +312,12 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+    } yield ()
 
   }
     
@@ -351,6 +369,13 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+    } yield ()
 
   }
     
@@ -404,6 +429,14 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+    } yield ()
 
   }
     
@@ -459,6 +492,15 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+    } yield ()
 
   }
     
@@ -516,6 +558,16 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+    } yield ()
 
   }
     
@@ -575,6 +627,17 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+    } yield ()
 
   }
     
@@ -636,6 +699,18 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+    } yield ()
 
   }
     
@@ -699,6 +774,19 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+      _ <- replaceField[P10](n, 9, boxId)
+    } yield ()
 
   }
     
@@ -764,6 +852,20 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+      _ <- replaceField[P10](n, 9, boxId)
+      _ <- replaceField[P11](n, 10, boxId)
+    } yield ()
 
   }
     
@@ -831,6 +933,21 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+      _ <- replaceField[P10](n, 9, boxId)
+      _ <- replaceField[P11](n, 10, boxId)
+      _ <- replaceField[P12](n, 11, boxId)
+    } yield ()
 
   }
     
@@ -900,6 +1017,22 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+      _ <- replaceField[P10](n, 9, boxId)
+      _ <- replaceField[P11](n, 10, boxId)
+      _ <- replaceField[P12](n, 11, boxId)
+      _ <- replaceField[P13](n, 12, boxId)
+    } yield ()
 
   }
     
@@ -971,6 +1104,23 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+      _ <- replaceField[P10](n, 9, boxId)
+      _ <- replaceField[P11](n, 10, boxId)
+      _ <- replaceField[P12](n, 11, boxId)
+      _ <- replaceField[P13](n, 12, boxId)
+      _ <- replaceField[P14](n, 13, boxId)
+    } yield ()
 
   }
     
@@ -1044,6 +1194,24 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+      _ <- replaceField[P10](n, 9, boxId)
+      _ <- replaceField[P11](n, 10, boxId)
+      _ <- replaceField[P12](n, 11, boxId)
+      _ <- replaceField[P13](n, 12, boxId)
+      _ <- replaceField[P14](n, 13, boxId)
+      _ <- replaceField[P15](n, 14, boxId)
+    } yield ()
 
   }
     
@@ -1119,6 +1287,25 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+      _ <- replaceField[P10](n, 9, boxId)
+      _ <- replaceField[P11](n, 10, boxId)
+      _ <- replaceField[P12](n, 11, boxId)
+      _ <- replaceField[P13](n, 12, boxId)
+      _ <- replaceField[P14](n, 13, boxId)
+      _ <- replaceField[P15](n, 14, boxId)
+      _ <- replaceField[P16](n, 15, boxId)
+    } yield ()
 
   }
     
@@ -1196,6 +1383,26 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+      _ <- replaceField[P10](n, 9, boxId)
+      _ <- replaceField[P11](n, 10, boxId)
+      _ <- replaceField[P12](n, 11, boxId)
+      _ <- replaceField[P13](n, 12, boxId)
+      _ <- replaceField[P14](n, 13, boxId)
+      _ <- replaceField[P15](n, 14, boxId)
+      _ <- replaceField[P16](n, 15, boxId)
+      _ <- replaceField[P17](n, 16, boxId)
+    } yield ()
 
   }
     
@@ -1275,6 +1482,27 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+      _ <- replaceField[P10](n, 9, boxId)
+      _ <- replaceField[P11](n, 10, boxId)
+      _ <- replaceField[P12](n, 11, boxId)
+      _ <- replaceField[P13](n, 12, boxId)
+      _ <- replaceField[P14](n, 13, boxId)
+      _ <- replaceField[P15](n, 14, boxId)
+      _ <- replaceField[P16](n, 15, boxId)
+      _ <- replaceField[P17](n, 16, boxId)
+      _ <- replaceField[P18](n, 17, boxId)
+    } yield ()
 
   }
     
@@ -1356,6 +1584,28 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+      _ <- replaceField[P10](n, 9, boxId)
+      _ <- replaceField[P11](n, 10, boxId)
+      _ <- replaceField[P12](n, 11, boxId)
+      _ <- replaceField[P13](n, 12, boxId)
+      _ <- replaceField[P14](n, 13, boxId)
+      _ <- replaceField[P15](n, 14, boxId)
+      _ <- replaceField[P16](n, 15, boxId)
+      _ <- replaceField[P17](n, 16, boxId)
+      _ <- replaceField[P18](n, 17, boxId)
+      _ <- replaceField[P19](n, 18, boxId)
+    } yield ()
 
   }
     
@@ -1439,6 +1689,29 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+      _ <- replaceField[P10](n, 9, boxId)
+      _ <- replaceField[P11](n, 10, boxId)
+      _ <- replaceField[P12](n, 11, boxId)
+      _ <- replaceField[P13](n, 12, boxId)
+      _ <- replaceField[P14](n, 13, boxId)
+      _ <- replaceField[P15](n, 14, boxId)
+      _ <- replaceField[P16](n, 15, boxId)
+      _ <- replaceField[P17](n, 16, boxId)
+      _ <- replaceField[P18](n, 17, boxId)
+      _ <- replaceField[P19](n, 18, boxId)
+      _ <- replaceField[P20](n, 19, boxId)
+    } yield ()
 
   }
     
@@ -1524,6 +1797,30 @@ object NodeFormats {
 
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
+
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+      _ <- replaceField[P10](n, 9, boxId)
+      _ <- replaceField[P11](n, 10, boxId)
+      _ <- replaceField[P12](n, 11, boxId)
+      _ <- replaceField[P13](n, 12, boxId)
+      _ <- replaceField[P14](n, 13, boxId)
+      _ <- replaceField[P15](n, 14, boxId)
+      _ <- replaceField[P16](n, 15, boxId)
+      _ <- replaceField[P17](n, 16, boxId)
+      _ <- replaceField[P18](n, 17, boxId)
+      _ <- replaceField[P19](n, 18, boxId)
+      _ <- replaceField[P20](n, 19, boxId)
+      _ <- replaceField[P21](n, 20, boxId)
+    } yield ()
 
   }
     
@@ -1612,8 +1909,32 @@ object NodeFormats {
     def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
     def read = readNode(readEntriesAndClose)
 
+    def replace(n: N, boxId: Long) = for {
+      _ <- replaceField[P1](n, 0, boxId)
+      _ <- replaceField[P2](n, 1, boxId)
+      _ <- replaceField[P3](n, 2, boxId)
+      _ <- replaceField[P4](n, 3, boxId)
+      _ <- replaceField[P5](n, 4, boxId)
+      _ <- replaceField[P6](n, 5, boxId)
+      _ <- replaceField[P7](n, 6, boxId)
+      _ <- replaceField[P8](n, 7, boxId)
+      _ <- replaceField[P9](n, 8, boxId)
+      _ <- replaceField[P10](n, 9, boxId)
+      _ <- replaceField[P11](n, 10, boxId)
+      _ <- replaceField[P12](n, 11, boxId)
+      _ <- replaceField[P13](n, 12, boxId)
+      _ <- replaceField[P14](n, 13, boxId)
+      _ <- replaceField[P15](n, 14, boxId)
+      _ <- replaceField[P16](n, 15, boxId)
+      _ <- replaceField[P17](n, 16, boxId)
+      _ <- replaceField[P18](n, 17, boxId)
+      _ <- replaceField[P19](n, 18, boxId)
+      _ <- replaceField[P20](n, 19, boxId)
+      _ <- replaceField[P21](n, 20, boxId)
+      _ <- replaceField[P22](n, 21, boxId)
+    } yield ()
+
   }
-    
 
 
 }

@@ -13,18 +13,11 @@ import NodeFormats._
 import BasicFormats._
 import BoxFormatsIdLinks._
 
-import BoxReplaces._
 import org.scalatest._
 import org.scalatest.prop.PropertyChecks
 import BoxTypes._
 import BoxUtils._
 import BoxScriptImports._
-
-import BoxReplaces._
-import PrimReplaces._
-import CollectionReplaces._
-import BasicReplaces._
-import NodeReplaces._
 
 import scalaz._
 import Scalaz._
@@ -33,13 +26,11 @@ import PersistenceSpecUtils._
 
 class ReplacesSpec extends WordSpec with PropertyChecks with ShouldMatchers {
 
-  
-
-  def replaceAndTest[T, M](model: M, newValue: T, box: Box[T])(implicit writesT: Writes[T], readsT: Reads[T], replacesM: Replaces[M]): Unit = {
+  def replaceAndTest[T, M](model: M, newValue: T, box: Box[T])(implicit formatT: Format[T], formatM: Format[M]): Unit = {
     //Check that box does not already have new value
     atomic { box() } should not be newValue
     val readerOfNewValue = BufferIO.toReader(newValue)
-    val replaceScript = replacesM.replace(model, box.id)
+    val replaceScript = formatM.replace(model, box.id)
     Shelf.runReader(replaceScript, readerOfNewValue)
     atomic { box() } shouldBe newValue
   }
@@ -100,11 +91,23 @@ class ReplacesSpec extends WordSpec with PropertyChecks with ShouldMatchers {
     }
 
     "set string box in a Person (Node2)" in {
+      implicit val personFormat = nodeFormat2(Person.apply, Person.default)("name", "age")      
+      val p = atomic { Person.default("a", 40) }
+      replaceAndTest(p, "b", p.name)
+    }
+
+    "set string box in a case class containing Person" in {
+      implicit val personFormat = nodeFormat2(Person.apply, Person.default)("name", "age")      
       
-      // implicit val personReplaces = nodeReplaces2(Person.apply, Person.default)("name", "age")
-      // 
-      // val p = atomic { Person.default("a", 40) }
-      // replaceAndTest(p, "b", p.name)
+      case class PersonAndString(p: Person, s: String)
+      
+      implicit val personAndStringFormat = productFormat2(PersonAndString.apply)("p", "s")
+      
+      val p = atomic { Person.default("a", 40) }
+      
+      val pas = PersonAndString(p, "s")
+      
+      replaceAndTest(pas, "b", p.name)
     }
     
   }

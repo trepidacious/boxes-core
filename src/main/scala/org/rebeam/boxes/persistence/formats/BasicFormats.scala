@@ -36,9 +36,18 @@ object BasicFormats {
 
   }
 
-  implicit def optionFormat[T](implicit reads: Reads[T], writes: Writes[T]) = new Format[Option[T]] {
+  implicit def replacesOption[T](implicit replaces: Replaces[T]): Replaces[Option[T]] = new Replaces[Option[T]] {
+    import BoxReaderDeltaF._    
+    def replace(option: Option[T], boxId: Long) = option match {
+      case Some(v) => replaces.replace(v, boxId)
+      case None => nothing
+    }
+  }
+
+  implicit def optionFormat[T](implicit format: Format[T]) = new Format[Option[T]] {
     override def read = readsOption[T].read
     override def write(obj: Option[T]) = writesOption[T].write(obj)
+    override def replace(option: Option[T], boxId: Long) = replacesOption[T].replace(option, boxId)
   }
 
   /**
@@ -56,6 +65,7 @@ object BasicFormats {
     lazy val delegate = format
     def write(t: T) = delegate.write(t)
     def read = delegate.read
+    def replace(t: T, boxId: Long) = delegate.replace(t, boxId)
   }
 
 }

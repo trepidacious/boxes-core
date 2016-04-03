@@ -23,10 +23,26 @@ trait LowPriorityCollectionFormats {
   val openEntryDict = OpenDict(PresentationName("Entry"), LinkEmpty)
 
   //This is the lower-priority format for maps, works in all cases but needs to use more boiler-plate in representation of non-string keys.
-  implicit def mapFormat[K, V](implicit writesK: Writes[K], writesV: Writes[V], readsK: Reads[K], readsV: Reads[V]): Format[Map[K, V]] = new Format[Map[K, V]] {
+  implicit def mapFormat[K, V](implicit formatK: Format[K], formatV: Format[V]): Format[Map[K, V]] = new Format[Map[K, V]] {
     def write(map: Map[K, V]) = writesMap[K, V].write(map)
     def read = readsMap[K, V].read
+    def replace(map: Map[K, V], boxId: Long) = replacesMap[K, V].replace(map, boxId)
   }
+
+  implicit def replacesMap[K, V](implicit replacesK: Replaces[K], replacesV: Replaces[V]): Replaces[Map[K, V]] = new Replaces[Map[K, V]] {
+    import BoxReaderDeltaF._
+    //TODO why do we need this? It should be in BoxTypes
+    implicit val f = BoxReaderDeltaF.boxReaderDeltaFunctor
+    def replaceEntry(entry: (K, V), boxId: Long): BoxReaderScript[Unit] = for {
+      _ <- replacesK.replace(entry._1, boxId)
+      _ <- replacesV.replace(entry._2, boxId)
+    } yield ()
+  
+    def replace(map: Map[K, V], boxId: Long): BoxReaderScript[Unit] = for {
+      _ <- map.toList traverseU (e => replaceEntry(e, boxId))
+    } yield ()
+  }
+
 
   implicit def writesMap[K, V](implicit writesK: Writes[K], writesV: Writes[V]): Writes[Map[K, V]] = new Writes[Map[K, V]] {
     
@@ -120,10 +136,20 @@ object CollectionFormats extends LowPriorityCollectionFormats {
     } map (_.toList)
 
   }
+  
+  implicit def replacesList[T](implicit replaces: Replaces[T]) = new Replaces[List[T]] {
+    import BoxReaderDeltaF._
+    //TODO why do we need this? It should be in BoxTypes
+    implicit val f = BoxReaderDeltaF.boxReaderDeltaFunctor
+    def replace(list: List[T], boxId: Long) = for {
+      _ <- list traverseU (replaces.replace(_, boxId))
+    } yield ()
+  }
 
-  implicit def listFormat[T](implicit reads: Reads[T], writes: Writes[T]): Format[List[T]] = new Format[List[T]] {
+  implicit def listFormat[T](implicit format: Format[T]): Format[List[T]] = new Format[List[T]] {
     override def read = readsList[T].read
     override def write(obj: List[T]) = writesList[T].write(obj)
+    override def replace(obj: List[T], boxId: Long) = replacesList[T].replace(obj, boxId)
   }
 
 
@@ -158,11 +184,20 @@ object CollectionFormats extends LowPriorityCollectionFormats {
 
   }
 
-  implicit def setFormat[T](implicit reads: Reads[T], writes: Writes[T]): Format[Set[T]] = new Format[Set[T]] {
-    override def read = readsSet[T].read
-    override def write(obj: Set[T]) = writesSet[T].write(obj)
+  implicit def replacesSet[T](implicit replaces: Replaces[T]) = new Replaces[Set[T]] {
+    import BoxReaderDeltaF._
+    //TODO why do we need this? It should be in BoxTypes
+    implicit val f = BoxReaderDeltaF.boxReaderDeltaFunctor
+    def replace(set: Set[T], boxId: Long) = for {
+      _ <- set.toList traverseU (replaces.replace(_, boxId))
+    } yield ()
   }
 
+  implicit def setFormat[T](implicit format: Format[T]): Format[Set[T]] = new Format[Set[T]] {
+    override def read = readsSet[T].read
+    override def write(obj: Set[T]) = writesSet[T].write(obj)
+    override def replace(obj: Set[T], boxId: Long) = replacesSet[T].replace(obj, boxId)
+  }
 
   //This is the higher-priority writer for Maps that have string keys, it can use a more compact representation
   //that should also be more idiomatic in e.g. JSON and XML
@@ -211,10 +246,25 @@ object CollectionFormats extends LowPriorityCollectionFormats {
     } map (entries => Map(entries: _*))
     
   }
+  
+  implicit def replacesStringKeyedMap[V](implicit replacesV: Replaces[V]): Replaces[Map[String, V]] = new Replaces[Map[String, V]] {
+    import BoxReaderDeltaF._
+    //TODO why do we need this? It should be in BoxTypes
+    implicit val f = BoxReaderDeltaF.boxReaderDeltaFunctor
+    def replaceEntry(entry: (String, V), boxId: Long): BoxReaderScript[Unit] = for {
+      _ <- replacesV.replace(entry._2, boxId)
+    } yield ()
+  
+    def replace(map: Map[String, V], boxId: Long): BoxReaderScript[Unit] = for {
+      _ <- map.toList traverseU (e => replaceEntry(e, boxId))
+    } yield ()
+  }
 
-  implicit def stringKeyedMapFormat[V](implicit writesV: Writes[V], readsV: Reads[V]): Format[Map[String, V]] = new Format[Map[String, V]] {
+
+  implicit def stringKeyedMapFormat[V](implicit formatV: Format[V]): Format[Map[String, V]] = new Format[Map[String, V]] {
     def write(map: Map[String, V]) = writesStringKeyedMap[V].write(map)
     def read = readsStringKeyedMap[V].read
+    def replace(map: Map[String, V], boxId: Long) = replacesStringKeyedMap[V].replace(map, boxId)
   }
 
 }

@@ -38,6 +38,8 @@ object ProductFormatsGen {
 
     val constructorArguments =    format(i => s"""options.p$i.getOrElse(throw new IncorrectTokenException("Product format has missing field " + name$i))""", ",\n            ")
 
+    val replaceFields =           format(i => s"_ <- replaceField[P$i](p, ${i - 1}, boxId)", "\n      ")
+
     s"""
       |  def productFormat$fieldCount[$fieldTypes, P <: Product](construct: ($constructorParameters) => P)
       |  ($productNameParameters,
@@ -88,6 +90,11 @@ object ProductFormatsGen {
       |        _ <- pullExpected(CloseDict)
       |      } yield p
       |    }
+      |
+      |    def replace(p: P, boxId: Long) = for {
+      |      $replaceFields
+      |    } yield ()
+      |
       |  }
     """.stripMargin
   }

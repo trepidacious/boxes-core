@@ -77,45 +77,58 @@ private object BoxFormatUtils {
       case _ => throw new IncorrectTokenException("Expected BoxToken at start of Box[_]")
     }
   }
+  
+  def replace[T](box: Box[T], boxId: Long, format: Format[T]) = {
+    import BoxReaderDeltaF._
+    //If this is our box, read a new value for it from tokens, set that new 
+    //value and we are done
+    if (box.id == boxId) {
+      for {
+        t <- peek
+        //If we have some data to read, read it and use values
+        _ <- if (t != EndToken) {
+          for {
+            newT <- format.read
+            _ <- set(box, newT)
+          } yield ()
+          
+        //There is no data left, so nothing to do - just return immediately
+        } else {
+          nothing            
+        }
+      } yield ()
+      
+    //If this is not our box, recurse to its contents
+    } else {
+      for {
+        t <- get(box)
+        _ <- format.replace(t, boxId)
+      } yield ()
+    }
+  }
+  
 }
 
 object BoxFormatsEmptyLinks {
-  implicit def writesBox[T](implicit writes: Writes[T]): Writes[Box[T]] = new Writes[Box[T]] {
-    def write(box: Box[T]) = BoxFormatUtils.write(box, EmptyLinks, writes)
-  }
-  implicit def readsBox[T](implicit reads: Reads[T]): Reads[Box[T]] = new Reads[Box[T]] {
-    def read = BoxFormatUtils.read(EmptyLinks, reads)
-  }
-  implicit def boxFormat[T](implicit reads: Reads[T], writes: Writes[T]): Format[Box[T]] = new Format[Box[T]] {
-    def write(box: Box[T]) = BoxFormatUtils.write(box, EmptyLinks, writes)
-    def read = BoxFormatUtils.read(EmptyLinks, reads)
+  implicit def boxFormat[T](implicit format: Format[T]): Format[Box[T]] = new Format[Box[T]] {
+    def write(box: Box[T]) = BoxFormatUtils.write(box, EmptyLinks, format)
+    def read = BoxFormatUtils.read(EmptyLinks, format)
+    def replace(box: Box[T], boxId: Long) = BoxFormatUtils.replace(box, boxId, format)
   }
 }
 
 object BoxFormatsIdLinks {
-  implicit def writesBox[T](implicit writes: Writes[T]): Writes[Box[T]] = new Writes[Box[T]] {
-    def write(box: Box[T]) = BoxFormatUtils.write(box, IdLinks, writes)
-  }
-  implicit def readsBox[T](implicit reads: Reads[T]): Reads[Box[T]] = new Reads[Box[T]] {
-    def read = BoxFormatUtils.read(IdLinks, reads)
-  }
-  implicit def boxFormat[T](implicit reads: Reads[T], writes: Writes[T]): Format[Box[T]] = new Format[Box[T]] {
-    def write(box: Box[T]) = BoxFormatUtils.write(box, IdLinks, writes)
-    def read = BoxFormatUtils.read(IdLinks, reads)
+  implicit def boxFormat[T](implicit format: Format[T]): Format[Box[T]] = new Format[Box[T]] {
+    def write(box: Box[T]) = BoxFormatUtils.write(box, IdLinks, format)
+    def read = BoxFormatUtils.read(IdLinks, format)
+    def replace(box: Box[T], boxId: Long) = BoxFormatUtils.replace(box, boxId, format)
   }
 }
 
 object BoxFormatsAllLinks {
-  implicit def writesBox[T](implicit writes: Writes[T]): Writes[Box[T]] = new Writes[Box[T]] {
-    def write(box: Box[T]) = BoxFormatUtils.write(box, AllLinks, writes)
-  }
-
-  implicit def readsBox[T](implicit reads: Reads[T]): Reads[Box[T]] = new Reads[Box[T]] {
-    def read = BoxFormatUtils.read(AllLinks, reads)
-  }
-
-  implicit def boxFormat[T](implicit reads: Reads[T], writes: Writes[T]): Format[Box[T]] = new Format[Box[T]] {
-    def write(box: Box[T]) = BoxFormatUtils.write(box, AllLinks, writes)
-    def read = BoxFormatUtils.read(AllLinks, reads)
+  implicit def boxFormat[T](implicit format: Format[T]): Format[Box[T]] = new Format[Box[T]] {
+    def write(box: Box[T]) = BoxFormatUtils.write(box, AllLinks, format)
+    def read = BoxFormatUtils.read(AllLinks, format)
+    def replace(box: Box[T], boxId: Long) = BoxFormatUtils.replace(box, boxId, format)
   }
 }

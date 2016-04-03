@@ -30,6 +30,8 @@ object NodeFormatsGen {
 
     val writeDictEntries =      format(i => s"_ <- writeDictEntry[P$i](n, name$i, ${i - 1}, boxLinkStrategy)", "\n        ")
 
+    val replaceFields =         format(i => s"_ <- replaceField[P$i](n, ${i - 1}, boxId)", "\n      ")
+
     val useDictEntriesCases =   format(i => s"case s if s == name$i => useDictEntry[P$i](n, ${i - 1}, link)", "\n              ")
 
     s"""
@@ -74,6 +76,10 @@ object NodeFormatsGen {
       |
       |    def write(n: N) = writeNode(n, nodeName, nodeLinkStrategy, writeEntriesAndClose)
       |    def read = readNode(readEntriesAndClose)
+      |
+      |    def replace(n: N, boxId: Long) = for {
+      |      $replaceFields
+      |    } yield ()
       |
       |  }
     """.stripMargin
