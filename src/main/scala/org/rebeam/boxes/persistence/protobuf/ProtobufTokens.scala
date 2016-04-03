@@ -78,32 +78,36 @@ class ProtobufTokenReader(is: CodedInputStream, onClose: => Unit) extends TokenR
       case _ => throw new IOException("Invalid link type")
     }
 
-    is.readRawVarint32() match {
-      case ProtobufTokens.openDict => OpenDict(readName(), readLink())
-      case ProtobufTokens.dictEntry => DictEntry(is.readString(), readLink())
-      case ProtobufTokens.closeDict => CloseDict
+    if (is.isAtEnd) {
+      EndToken
+    } else {
+      is.readRawVarint32() match {
+        case ProtobufTokens.openDict => OpenDict(readName(), readLink())
+        case ProtobufTokens.dictEntry => DictEntry(is.readString(), readLink())
+        case ProtobufTokens.closeDict => CloseDict
 
-      case ProtobufTokens.booleanToken => BooleanToken(is.readBool())
-      case ProtobufTokens.intToken => IntToken(is.readRawVarint32())
-      case ProtobufTokens.longToken => LongToken(is.readRawVarint64())
-      case ProtobufTokens.floatToken => FloatToken(is.readFloat())
-      case ProtobufTokens.doubleToken => DoubleToken(is.readDouble())
-      case ProtobufTokens.stringToken => StringToken(is.readString())
+        case ProtobufTokens.booleanToken => BooleanToken(is.readBool())
+        case ProtobufTokens.intToken => IntToken(is.readRawVarint32())
+        case ProtobufTokens.longToken => LongToken(is.readRawVarint64())
+        case ProtobufTokens.floatToken => FloatToken(is.readFloat())
+        case ProtobufTokens.doubleToken => DoubleToken(is.readDouble())
+        case ProtobufTokens.stringToken => StringToken(is.readString())
 
-      case ProtobufTokens.bigIntToken => BigIntToken(BigInt(is.readByteArray()))
-      case ProtobufTokens.bigDecimalToken =>
-        val unscaledValue = BigInt(is.readByteArray())
-        val scale = is.readRawVarint32()
-        BigDecimalToken(BigDecimal(unscaledValue, scale))
+        case ProtobufTokens.bigIntToken => BigIntToken(BigInt(is.readByteArray()))
+        case ProtobufTokens.bigDecimalToken =>
+          val unscaledValue = BigInt(is.readByteArray())
+          val scale = is.readRawVarint32()
+          BigDecimalToken(BigDecimal(unscaledValue, scale))
 
-      case ProtobufTokens.openArr => OpenArr(readName())
-      case ProtobufTokens.closeArr => CloseArr
+        case ProtobufTokens.openArr => OpenArr(readName())
+        case ProtobufTokens.closeArr => CloseArr
 
-      case ProtobufTokens.boxToken => BoxToken(readLink())
+        case ProtobufTokens.boxToken => BoxToken(readLink())
 
-      case ProtobufTokens.noneToken => NoneToken
+        case ProtobufTokens.noneToken => NoneToken
 
-      case x => throw new IOException("Invalid token type " + x)
+        case x => throw new IOException("Invalid token type " + x)
+      }
     }
   }
 
@@ -193,6 +197,10 @@ class ProtobufTokenWriter(os: CodedOutputStream, onClose: => Unit) extends Token
         writeLink(link)
 
       case NoneToken => os.writeRawVarint32(noneToken)
+      
+      case EndToken => {
+        //Nothing to do
+      }
     }
   }
 

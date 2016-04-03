@@ -1,5 +1,6 @@
-package org.rebeam.boxes.persistence
+package org.rebeam.boxes.persistence.buffers
 
+import org.rebeam.boxes.persistence._
 import scala.collection.mutable.ListBuffer
 import org.rebeam.boxes.core._
 
@@ -21,9 +22,9 @@ object BufferTokenReader {
 class BufferTokenReader(tokens: List[Token]) extends TokenReader {
   private val buffer = ListBuffer(tokens: _*)
 
-  def peek: Token = buffer.headOption.getOrElse(throw new NoTokenException())
+  def peek: Token = buffer.headOption.getOrElse(EndToken)
   def pull(): Token = if (buffer.isEmpty) {
-    throw new NoTokenException()
+    EndToken
   } else {
     buffer.remove(0)
   }
@@ -36,6 +37,8 @@ object BufferIO {
     Shelf.runWriter(Writing.write(t), w)
     w.tokens
   }
+
+  def toReader[T: Writes](t: T) = BufferTokenReader(toTokens(t))
 
   def fromTokens[T: Reads](tokens: List[Token]): T = {
     val r = BufferTokenReader(tokens)

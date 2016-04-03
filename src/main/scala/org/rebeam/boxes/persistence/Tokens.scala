@@ -64,3 +64,9 @@ case object NoneToken extends Token
  */
 case class OpenArr(name: TokenName) extends Token
 case object CloseArr extends Token
+
+/**
+ * When a stream of tokens is exhausted, it should return EndToken whenever
+ * queried.
+ */
+case object EndToken extends Token

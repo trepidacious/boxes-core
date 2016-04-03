@@ -132,6 +132,10 @@ class JsonTokenWriter(writer: Writer, pretty: Boolean = false) extends TokenWrit
       case NoneToken => {
         print("null")
       }
+      
+      case EndToken => {
+        //Nothing to do
+      }
 
     }
     previousToken = Some(t)
@@ -194,7 +198,9 @@ class JsonTokenReader(reader: Reader) extends TokenReader {
 
   override def pull(): Token = {
     val t = peek
-    nextToken = None
+    //Clear the token since we have just read it, unless it is an EndToken,
+    //in which case leave it in place
+    if (nextToken != Some(EndToken)) nextToken = None
     t
   }
 
@@ -291,7 +297,7 @@ class JsonTokenReader(reader: Reader) extends TokenReader {
         case _ => throw new IncorrectTokenException("Got a field '" + name + "' expected to be a LinkId, but had a field value that was not an Int, Double or String")
       }
       case JsonParser.FieldStart(name) => DictEntry(name)
-      case JsonParser.End => throw new IncorrectTokenException("Reached end of Json data")
+      case JsonParser.End => EndToken
       case JsonParser.StringVal(value) => StringToken(value)
       case JsonParser.IntVal(value) => BigIntToken(value)
       case JsonParser.DoubleVal(value) => BigDecimalToken(value)

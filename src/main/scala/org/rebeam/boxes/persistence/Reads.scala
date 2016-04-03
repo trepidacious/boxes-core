@@ -9,8 +9,8 @@ import scala.annotation.implicitNotFound
 @implicitNotFound(msg = "Cannot find Reads or Format type class for ${T}")
 trait Reads[T] {
  /**
-  * Read an object from the context, returning the object read
-  * @param context The context from which to read
+  * Produce a script that will read an object of type T from available
+  * tokens.
   * @return        The object we've read
   */
  def read: BoxReaderScript[T]

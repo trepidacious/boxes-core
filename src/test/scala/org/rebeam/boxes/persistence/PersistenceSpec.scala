@@ -3,6 +3,7 @@ package org.rebeam.boxes.persistence
 import org.rebeam.boxes.core._
 import org.rebeam.boxes.persistence.formats._
 import org.rebeam.boxes.persistence.json.JsonPrettyIO
+import org.rebeam.boxes.persistence.buffers._
 import org.scalacheck.Arbitrary
 import org.scalatest._
 import org.scalatest.prop.PropertyChecks

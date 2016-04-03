@@ -3,6 +3,7 @@ package org.rebeam.boxes.persistence
 import org.rebeam.boxes.core._
 import org.rebeam.boxes.persistence._
 import org.rebeam.boxes.persistence.formats._
+import org.rebeam.boxes.persistence.buffers._
 import PrimFormats._
 import ProductFormats._
 import BasicFormats._

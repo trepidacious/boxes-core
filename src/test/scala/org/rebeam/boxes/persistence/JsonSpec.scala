@@ -2,20 +2,40 @@ package org.rebeam.boxes.persistence
 
 import org.rebeam.boxes.core._
 import org.rebeam.boxes.persistence.formats._
-import org.rebeam.boxes.persistence.json.JsonPrettyIO
+import org.rebeam.boxes.persistence.json.{JsonPrettyIO, JsonTokenReader}
 import org.scalacheck.Arbitrary
 import org.scalatest._
 import org.scalatest.prop.PropertyChecks
+
+import java.io.StringReader
 
 import scala.util.Try
 
 class JsonSpec extends WordSpec with PropertyChecks with ShouldMatchers {
 
+  //Like JsonPrettyIO.fromJsonString but checking that we
+  //have reached the end of the tokens after reading
+  def fromJsonString[T: Reads](s: String): T = {
+    val sr = new StringReader(s)
+    val r = new JsonTokenReader(sr)
+    val t = Shelf.runReaderOrException(Reading.read[T], r)
+    //Check that JsonTokenReader returns EndToken indefinitely as expected
+    for (i <- 1 to 10) {
+      r.peek shouldBe EndToken
+      r.peek shouldBe EndToken
+      r.pull shouldBe EndToken
+      r.pull shouldBe EndToken
+    }
+    t
+  }
 
   def duplicate[T: Format](t: T): Unit = {
     val s = JsonPrettyIO.toJsonString(t:T)
-    val d = JsonPrettyIO.fromJsonString[T](s)
+    val d = fromJsonString[T](s)
     t shouldBe d
+    //And test JsonPrettyIO as well
+    val d2 = JsonPrettyIO.fromJsonString[T](s)
+    t shouldBe d2
   }
 
   def duplicateBigDecimal(v: BigDecimal): Unit = {

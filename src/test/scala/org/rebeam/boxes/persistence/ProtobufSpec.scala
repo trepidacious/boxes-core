@@ -17,6 +17,8 @@ import BoxTypes._
 import BoxUtils._
 import BoxScriptImports._
 
+import java.io.InputStream
+
 import scalaz._
 import Scalaz._
 
@@ -24,12 +26,32 @@ import PersistenceSpecUtils._
 
 class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
 
+  //Equivalent to ProtobufIO.read, but checks that when we are finished reading
+  //the data back, we then get EndTokens from the token reader
+  def read[T: Reads](input:InputStream) = {
+    val script = implicitly[Reads[T]].read
+    val r = ProtobufTokenReader(input)
+    try {
+      val t = Shelf.runReaderOrException(script, r)
+      //Check that ProtobufTokenReader returns EndToken indefinitely as expected
+      for (i <- 1 to 10) {
+        r.peek shouldBe EndToken
+        r.peek shouldBe EndToken
+        r.pull shouldBe EndToken
+        r.pull shouldBe EndToken
+      }
+      t
+    } finally {
+      r.close()
+    }
+  }
+
   def makePerson(name: String, age: Int) = Person.default(name, age)
 
   def duplicateList[T](list: List[T])(implicit format: Format[List[T]]) = {
     val os = new ByteArrayOutputStream()
     ProtobufIO.write(list, os)
-    val list2 = ProtobufIO.read[List[T]](new ByteArrayInputStream(os.toByteArray))
+    val list2 = read[List[T]](new ByteArrayInputStream(os.toByteArray))
     list shouldBe list2
   }
 
@@ -38,7 +60,7 @@ class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
 
     val os = new ByteArrayOutputStream()
     ProtobufIO.write(c, os)
-    val c2 = ProtobufIO.read[CaseClass](new ByteArrayInputStream(os.toByteArray))
+    val c2 = read[CaseClass](new ByteArrayInputStream(os.toByteArray))
     c shouldBe c2
   }
 
@@ -50,7 +72,7 @@ class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
     val os = new ByteArrayOutputStream()
     ProtobufIO.write(bob, os)
 
-    val bob2 = ProtobufIO.read[Person](new ByteArrayInputStream(os.toByteArray))
+    val bob2 = read[Person](new ByteArrayInputStream(os.toByteArray))
 
     val os2 = new ByteArrayOutputStream()
     ProtobufIO.write(bob2, os2)
@@ -93,7 +115,7 @@ class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
     //Check that after writing and reading, we again have identical (equal) Persons in the first two
     //positions and last two positions, but they are not equal to each other, or the corresponding
     //Persons in the original array
-    val list2 = ProtobufIO.read[List[Person]](new ByteArrayInputStream(os.toByteArray))
+    val list2 = read[List[Person]](new ByteArrayInputStream(os.toByteArray))
     list2.head should be (list2(1))
     list2(2) should be (list2(3))
     list2.head should not be list2(2)
@@ -123,7 +145,7 @@ class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
 
       val os = new ByteArrayOutputStream()
       ProtobufIO.write(list, os)
-      val list2 = ProtobufIO.read[List[Person]](new ByteArrayInputStream(os.toByteArray))
+      val list2 = read[List[Person]](new ByteArrayInputStream(os.toByteArray))
 
       list.size shouldBe list2.size
       val lists = list.zip(list2)

@@ -5,6 +5,7 @@ import BoxTypes._
 import BoxUtils._
 import org.scalatest.Matchers
 import BoxScriptImports._
+import org.rebeam.boxes.persistence.buffers._
 
 import scalaz._
 import Scalaz._
