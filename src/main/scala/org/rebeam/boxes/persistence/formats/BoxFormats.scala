@@ -9,9 +9,9 @@ import Scalaz._
 
 import scala.language.implicitConversions
 
-private object BoxFormatUtils {
+private class BoxFormat[T](linkStrategy: LinkStrategy)(implicit format: Format[T]) extends Format[Box[T]] {
 
-  def write[T](box: Box[T], linkStrategy: LinkStrategy, writes: Writes[T]) = {
+  override def write(box: Box[T]) = {
     import BoxWriterDeltaF._
     linkStrategy match {
       case AllLinks => cacheBox(box) flatMap {
@@ -19,7 +19,7 @@ private object BoxFormatUtils {
         case New(id) => for {
           _ <- put(BoxToken(LinkId(id)))
           v <- get(box)
-          _ <- writes.write(v)
+          _ <- format.write(v)
         } yield ()
       }
 
@@ -28,7 +28,7 @@ private object BoxFormatUtils {
         case New(id) => for {
           _ <- put(BoxToken(LinkEmpty))
           v <- get(box)
-          _ <- writes.write(v)
+          _ <- format.write(v)
         } yield ()
       }
 
@@ -37,13 +37,13 @@ private object BoxFormatUtils {
         case New(id) => for {
           _ <- put(BoxToken(LinkId(id)))
           v <- get(box)
-          _ <- writes.write(v)
+          _ <- format.write(v)
         } yield ()
       }
     }
   }
 
-  def read[T](linkStrategy: LinkStrategy, reads: Reads[T]) = {
+  override def read = {
     import BoxReaderDeltaF._
     pull flatMap {
       case BoxToken(link) =>
@@ -53,7 +53,7 @@ private object BoxFormatUtils {
               throw new BoxCacheException("Found a Box LinkEmpty but boxLinkStrategy is " + linkStrategy)
             }
             for {
-              v <- reads.read
+              v <- format.read
               b <- create(v)
             } yield b
 
@@ -62,7 +62,7 @@ private object BoxFormatUtils {
               throw new BoxCacheException("Found a Box LinkId (" + id + ") but boxLinkStrategy is " + linkStrategy)
             }
             for {
-              v <- reads.read
+              v <- format.read
               b <- create(v)              
               _ <- putCachedBox(id, b)
             } yield b
@@ -78,7 +78,7 @@ private object BoxFormatUtils {
     }
   }
   
-  def replace[T](box: Box[T], boxId: Long, format: Format[T]) = {
+  override def replace(box: Box[T], boxId: Long) = {
     import BoxReaderDeltaF._
     //If this is our box, read a new value for it from tokens, set that new 
     //value and we are done
@@ -110,25 +110,13 @@ private object BoxFormatUtils {
 }
 
 object BoxFormatsEmptyLinks {
-  implicit def boxFormat[T](implicit format: Format[T]): Format[Box[T]] = new Format[Box[T]] {
-    def write(box: Box[T]) = BoxFormatUtils.write(box, EmptyLinks, format)
-    def read = BoxFormatUtils.read(EmptyLinks, format)
-    def replace(box: Box[T], boxId: Long) = BoxFormatUtils.replace(box, boxId, format)
-  }
+  implicit def boxFormat[T](implicit format: Format[T]): Format[Box[T]] = new BoxFormat[T](EmptyLinks)
 }
 
 object BoxFormatsIdLinks {
-  implicit def boxFormat[T](implicit format: Format[T]): Format[Box[T]] = new Format[Box[T]] {
-    def write(box: Box[T]) = BoxFormatUtils.write(box, IdLinks, format)
-    def read = BoxFormatUtils.read(IdLinks, format)
-    def replace(box: Box[T], boxId: Long) = BoxFormatUtils.replace(box, boxId, format)
-  }
+  implicit def boxFormat[T](implicit format: Format[T]): Format[Box[T]] = new BoxFormat[T](IdLinks)
 }
 
 object BoxFormatsAllLinks {
-  implicit def boxFormat[T](implicit format: Format[T]): Format[Box[T]] = new Format[Box[T]] {
-    def write(box: Box[T]) = BoxFormatUtils.write(box, AllLinks, format)
-    def read = BoxFormatUtils.read(AllLinks, format)
-    def replace(box: Box[T], boxId: Long) = BoxFormatUtils.replace(box, boxId, format)
-  }
+  implicit def boxFormat[T](implicit format: Format[T]): Format[Box[T]] = new BoxFormat[T](AllLinks)
 }
