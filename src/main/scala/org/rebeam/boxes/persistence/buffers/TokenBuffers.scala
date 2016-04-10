@@ -16,7 +16,7 @@ class BufferTokenWriter extends TokenWriter {
 }
 
 object BufferTokenReader {
-  def apply(tokens: List[Token]) = new BufferTokenReader(tokens)
+  def apply(tokens: List[Token]): BufferTokenReader = new BufferTokenReader(tokens)
 }
 
 class BufferTokenReader(tokens: List[Token]) extends TokenReader {
