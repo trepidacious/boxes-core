@@ -17,7 +17,7 @@ class JsonSpec extends WordSpec with PropertyChecks with ShouldMatchers {
   //have reached the end of the tokens after reading
   def fromJsonString[T: Reads](s: String): T = {
     val sr = new StringReader(s)
-    val r = new JsonTokenReader(sr)
+    val r = JsonTokenReader(sr)
     val t = Shelf.runReaderOrException(Reading.read[T], r)
     //Check that JsonTokenReader returns EndToken indefinitely as expected
     for (i <- 1 to 10) {
