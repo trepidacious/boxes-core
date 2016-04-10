@@ -1,6 +1,7 @@
 package org.rebeam.boxes.persistence
 
 import org.rebeam.boxes.core._
+
 trait TokenReader {
 
   def peek: Token
