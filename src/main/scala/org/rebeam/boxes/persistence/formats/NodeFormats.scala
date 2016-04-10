@@ -1,4 +1,4 @@
-package org.rebeam.boxes.persistence
+package org.rebeam.boxes.persistence.formats
 
 import scala.language.implicitConversions
 
