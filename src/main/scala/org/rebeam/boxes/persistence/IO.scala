@@ -27,6 +27,16 @@ class IO(val factory: ReaderWriterFactory) {
       writer.close()
     }
   }
+  
+  def writeRevision[T: Writes](r: Revision, t: T, output: OutputStream) = {
+    val script = implicitly[Writes[T]].write(t)
+    val writer = factory.writer(output)
+    try {
+      BoxWriterScript.run(script, r, writer)._1
+    } finally {
+      writer.close()
+    }    
+  }
 
   def read[T: Reads](input:InputStream) = {
     val script = implicitly[Reads[T]].read
