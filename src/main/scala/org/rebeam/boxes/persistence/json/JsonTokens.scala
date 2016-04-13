@@ -150,6 +150,8 @@ class JsonTokenWriter(writer: Writer, pretty: Boolean = false) extends TokenWrit
 
 object JsonTokenReader {
   def apply(tokenReader: TokenReader): TokenReader = new JsonTokenReader(tokenReader)
+  def apply(tokenReader: TokenReader, casting: JsonCasting): TokenReader = new JsonTokenReader(tokenReader, casting)
+  def maximalCasting(tokenReader: TokenReader): TokenReader = new JsonTokenReader(tokenReader, JsonMaximalCasting)
   def apply(reader: Reader): TokenReader = apply(new JsonDirectTokenReader(reader))
   def apply(s: String): TokenReader = apply(new JsonDirectTokenReader(new StringReader(s)))
 }
@@ -222,6 +224,26 @@ class JsonDirectTokenReader(reader: Reader) extends TokenReader {
   }
 }
 
+trait JsonCasting {
+  @throws [IncorrectTokenException]
+  def toInt(t: Token): Int
+
+  @throws [IncorrectTokenException]
+  def toLong(t: Token): Long
+
+  @throws [IncorrectTokenException]
+  def toFloat(t: Token): Float
+
+  @throws [IncorrectTokenException]
+  def toDouble(t: Token): Double
+
+  @throws [IncorrectTokenException]
+  def toBigInt(t: Token): BigInt
+
+  @throws [IncorrectTokenException]
+  def toBigDecimal(t: Token): BigDecimal
+}
+
 /**
  * This provides casting from input tokens read using JsonDirectTokenReader to
  * each primitive type corresponding to a primitive token (Prim).
@@ -251,7 +273,7 @@ class JsonDirectTokenReader(reader: Reader) extends TokenReader {
  * Stricter behaviour is technically possible, e.g. using isExactFloat, isBinaryFloat or isDecimalFloat
  * (or Double equivalents) - if such precision is important, you should probably be using BigDecimal anyway.
  */
-object JsonCasting {
+object JsonMinimalCasting extends JsonCasting {
 
   //The range we can represent as a Float without truncation
   val minFloatAsBigDecimal = BigDecimal.decimal(Float.MinValue)
@@ -322,36 +344,103 @@ object JsonCasting {
 }
 
 /**
+ * Implements the same casts as JsonMinimalCasting, but will also cast between
+ * numbers and strings when possible without data loss.
+ */
+object JsonMaximalCasting extends JsonCasting {
+
+  private def parseBigDecimalToken(s: String): BigDecimalToken = try {
+    BigDecimalToken(BigDecimal(s))
+  } catch {
+    case nfe: NumberFormatException => throw new IncorrectTokenException("Failed to convert token to a decimal: " + nfe.getMessage)
+  }
+
+  private def parseBigIntToken(s: String): BigIntToken = try {
+    BigIntToken(BigInt(s))
+  } catch {
+    case nfe: NumberFormatException => throw new IncorrectTokenException("Failed to convert token to an integer: " + nfe.getMessage)
+  }
+
+  @throws [IncorrectTokenException]
+  override def toInt(t: Token): Int = t match {
+    case StringToken(s) => toInt(parseBigIntToken(s))
+    case BigIntToken(n) if n.isValidInt => n.toInt
+    case BigDecimalToken(n) if n.isValidInt => n.toIntExact
+    case _ => throw new IncorrectTokenException("Pulling an IntToken, got " + t)
+  }
+
+  @throws [IncorrectTokenException]
+  override def toLong(t: Token): Long = t match {
+    case StringToken(s) => toLong(parseBigIntToken(s))
+    case BigIntToken(n) if n.isValidLong => n.toLong
+    case BigDecimalToken(n) if n.isValidLong => n.toLongExact
+    case _ => throw new IncorrectTokenException("Expected a LongToken, got " + t)
+  }
+
+  @throws [IncorrectTokenException]
+  override def toFloat(t: Token): Float = t match {
+    case StringToken(s) => toFloat(parseBigDecimalToken(s))
+    case BigIntToken(n) => JsonMinimalCasting.bigDecimalToFloat(BigDecimal(n)).getOrElse(throw new IncorrectTokenException("Expected a FloatToken, got " + t + "(out of range)"))
+    case BigDecimalToken(n) => JsonMinimalCasting.bigDecimalToFloat(n).getOrElse(throw new IncorrectTokenException("Expected a FloatToken, got " + t + "(out of range)"))
+    case _ => throw new IncorrectTokenException("Expected a FloatToken, got " + t)
+  }
+
+  @throws [IncorrectTokenException]
+  override def toDouble(t: Token): Double = t match {
+    case StringToken(s) => toDouble(parseBigDecimalToken(s))
+    case BigIntToken(n) => JsonMinimalCasting.bigDecimalToDouble(BigDecimal(n)).getOrElse(throw new IncorrectTokenException("Expected a DoubleToken, got " + t + "(out of range)"))
+    case BigDecimalToken(n) => JsonMinimalCasting.bigDecimalToDouble(n).getOrElse(throw new IncorrectTokenException("Expected a DoubleToken, got " + t + "(out of range)"))
+    case _ => throw new IncorrectTokenException("Expected a DoubleToken, got " + t)
+  }
+
+  @throws [IncorrectTokenException]
+  override def toBigInt(t: Token): BigInt = t match {
+    case StringToken(s) => parseBigIntToken(s).p
+    case BigIntToken(i) => i
+    case BigDecimalToken(n) => n.toBigIntExact().getOrElse(throw new IncorrectTokenException("Expected a BigIntToken, got a BigDecimalToken with non-exact value " + n))
+    case _ => throw new IncorrectTokenException("Expected a BigIntToken, got " + t)
+  }
+
+  @throws [IncorrectTokenException]
+  override def toBigDecimal(t: Token): BigDecimal = t match {
+    case StringToken(s) => parseBigDecimalToken(s).p
+    case BigDecimalToken(n) => n
+    case BigIntToken(i) => BigDecimal(i)
+    case _ => throw new IncorrectTokenException("Expected a BigDecimalToken, got " + t)
+  }
+  
+}
+
+
+/**
  * Wraps a TokenReader to apply the casting permitted for tokens derived
  * from json, using JsonCasting.
  * This is used to wrap JsonBaseTokenReader that parses json, and can also be 
  * used to wrap e.g. a BufferTokenReader reading tokens that originally came 
  * by being pulled from a JsonBaseTokenReader.
  */
-class JsonTokenReader(reader: TokenReader) extends TokenReader {
-
-  import JsonCasting._
+class JsonTokenReader(reader: TokenReader, casting: JsonCasting = JsonMinimalCasting) extends TokenReader {
 
   override def peek: Token = reader.peek
   override def pull(): Token = reader.pull
 
   @throws [IncorrectTokenException]
-  override def pullInt(): Int = toInt(pull())
+  override def pullInt(): Int = casting.toInt(pull())
   
   @throws [IncorrectTokenException]
-  override def pullLong(): Long = toLong(pull())
+  override def pullLong(): Long = casting.toLong(pull())
 
   @throws [IncorrectTokenException]
-  override def pullFloat(): Float = toFloat(pull())
+  override def pullFloat(): Float = casting.toFloat(pull())
   
   @throws [IncorrectTokenException]
-  override def pullDouble(): Double = toDouble(pull())
+  override def pullDouble(): Double = casting.toDouble(pull())
   
   @throws [IncorrectTokenException]
-  override def pullBigInt(): BigInt = toBigInt(pull())
+  override def pullBigInt(): BigInt = casting.toBigInt(pull())
   
   @throws [IncorrectTokenException]
-  override def pullBigDecimal(): BigDecimal = toBigDecimal(pull())
+  override def pullBigDecimal(): BigDecimal = casting.toBigDecimal(pull())
   
   override def close(): Unit = reader.close()
 }
