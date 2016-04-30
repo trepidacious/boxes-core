@@ -49,6 +49,15 @@ object ProductFormats {
     def replace(p: P, boxId: Long) = BoxReaderDeltaF.nothing
 
   }
+  
+  /**
+   * Format for a value class that just reads/writes the wrapped value
+   */
+  def valueClassFormat[P1: Format, P <: Product](construct: (P1) => P) : Format[P] = new Format[P] {
+    def write(p: P): BoxWriterScript[Unit] = implicitly[Format[P1]].write(p.productElement(0).asInstanceOf[P1])
+    def read: BoxReaderScript[P] = implicitly[Format[P1]].read map (v => construct(v))    
+    def replace(p: P, boxId: Long) = BoxReaderDeltaF.nothing
+  }
 
   // ################################################################
   // ################################################################
