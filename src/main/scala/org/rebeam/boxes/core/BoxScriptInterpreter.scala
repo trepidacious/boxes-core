@@ -14,11 +14,10 @@ import BoxDelta._
 object BoxScriptInterpreter {
   
   /**
-   * Run a script and append the deltas it generates to an existing RevisionAndDeltas, creating a new
-   * RevisionAndDeltas and a script result
+   * Run a script and produce a list of reads (by box id) and a result
    * @param script    The script to run
-   * @param rad       The initial RevisionAndDeltas
-   * @param runReactions  True to run reactions when they are created, or when boxes are written. False to ignore reactions
+   * @param r         The initial Revision
+   * @param reads     The set of reads so far
    * @tparam A        The result type of the script
    * @return          (new RevisionAndDeltas, script result, all deltas applied directly by the script - excluding those from reactions)
    */
