@@ -66,6 +66,10 @@ object Shelf {
     commit(RevisionAndDeltas(baseRevision, finalRad.deltas)).map((_, result))    
   }
 
+  def runRepeatedReader[A](s: BoxReaderScript[A], reader: TokenReader): (Revision, A) = {
+    Range(0, retries).view.map(_ => runReader(s, reader)).find(o => o.isDefined).flatten.getOrElse(throw new RuntimeException("Transaction failed too many times"))
+  }
+
   def runReaderOrException[A](s: BoxReaderScript[A], reader: TokenReader): A = runReader(s, reader) map (_._2) getOrElse (
     throw new RuntimeException("Shelf.runReaderOrException failed - should not occur for valid tokens and formats")
   )
