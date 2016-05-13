@@ -40,6 +40,8 @@ object ProductFormatsGen {
 
     val replaceFields =           format(i => s"_ <- replaceField[P$i](p, ${i - 1}, boxId)", "\n      ")
 
+    val modifyFields =            format(i => s"_ <- modifyField[P$i](p, ${i - 1}, boxId)", "\n      ")
+
     s"""
       |  def productFormat$fieldCount[$fieldTypes, P <: Product](construct: ($constructorParameters) => P)
       |  ($productNameParameters,
@@ -94,6 +96,12 @@ object ProductFormatsGen {
       |    def replace(p: P, boxId: Long) = for {
       |      $replaceFields
       |    } yield ()
+      |
+      |    def modify(p: P, boxId: Long) = for {
+      |      $modifyFields
+      |    } yield ()
+      |
+      |    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
       |
       |  }
     """.stripMargin

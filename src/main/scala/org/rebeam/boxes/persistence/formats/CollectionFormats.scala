@@ -25,7 +25,6 @@ trait LowPriorityCollectionFormats {
   //This is the lower-priority format for maps, works in all cases but needs to use more boiler-plate in representation of non-string keys.
   implicit def mapFormat[K, V](implicit formatK: Format[K], formatV: Format[V]): Format[Map[K, V]] = new Format[Map[K, V]] {
 
-
     //Replaces
 
     implicit val f = BoxReaderDeltaF.boxReaderDeltaFunctor //TODO why do we need this? It should be in BoxTypes
@@ -39,6 +38,17 @@ trait LowPriorityCollectionFormats {
       _ <- map.toList traverseU (e => replaceEntry(e, boxId))
     } yield ()
 
+    def modifyEntry(entry: (K, V), boxId: Long): BoxReaderScript[Unit] = for {
+      _ <- formatK.modify(entry._1, boxId)
+      _ <- formatV.modify(entry._2, boxId)
+    } yield ()
+
+    def modify(map: Map[K, V], boxId: Long): BoxReaderScript[Unit] = for {
+      _ <- map.toList traverseU (e => modifyEntry(e, boxId))
+    } yield ()
+
+    //TODO we could probably have a sensible set of actions here, e.g. clear, put etc.
+    def modifyBox(box: Box[Map[K, V]]) = nothing
 
     //Writes
 
@@ -134,11 +144,20 @@ object CollectionFormats extends LowPriorityCollectionFormats {
     override def replace(list: List[T], boxId: Long) = for {
       _ <- list traverseU (format.replace(_, boxId))
     } yield ()
+
+    override def modify(list: List[T], boxId: Long) = for {
+      _ <- list traverseU (format.modify(_, boxId))
+    } yield ()
+
+    //TODO we could probably provide a reasonable set of actions here, e.g. clear, add etc.
+    override def modifyBox(box: Box[List[T]]) = nothing
+
   }
 
 
   //FIXME refactor to use same code as for list, and then add any additional versions, e.g. Vector
   implicit def setFormat[T](implicit format: Format[T]): Format[Set[T]] = new Format[Set[T]] {
+
     //FIXME make this tail recursive, or trampoline, or something?
     private def readEntries(entries: Vector[T]): BoxReaderScript[Vector[T]] = for {
       t <- peek
@@ -168,6 +187,14 @@ object CollectionFormats extends LowPriorityCollectionFormats {
     override def replace(set: Set[T], boxId: Long) = for {
       _ <- set.toList traverseU (format.replace(_, boxId))
     } yield ()
+
+    override def modify(set: Set[T], boxId: Long) = for {
+      _ <- set.toList traverseU (format.modify(_, boxId))
+    } yield ()
+
+    //TODO we could probably provide a reasonable set of actions here, e.g. clear, add etc.
+    override def modifyBox(box: Box[Set[T]]) = nothing
+
   }
 
   //This is the higher-priority format for Maps that have string keys, it can use a more compact representation
@@ -221,7 +248,18 @@ object CollectionFormats extends LowPriorityCollectionFormats {
     def replace(map: Map[String, V], boxId: Long): BoxReaderScript[Unit] = for {
       _ <- map.toList traverseU (e => replaceEntry(e, boxId))
     } yield ()
-    
+
+    private def modifyEntry(entry: (String, V), boxId: Long): BoxReaderScript[Unit] = for {
+      _ <- formatV.modify(entry._2, boxId)
+    } yield ()
+
+    def modify(map: Map[String, V], boxId: Long): BoxReaderScript[Unit] = for {
+      _ <- map.toList traverseU (e => modifyEntry(e, boxId))
+    } yield ()
+
+    //TODO we could probably provide a sensible set of actions here, e.g. clear, put etc.
+    def modifyBox(box: Box[Map[String, V]]) = nothing
+
   }
 
 }

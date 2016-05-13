@@ -4,7 +4,10 @@ import org.rebeam.boxes.persistence._
 import org.rebeam.boxes.core._
 import BoxTypes._
 
+import scala.language.implicitConversions
+
 object BasicFormats {
+
   implicit def optionFormat[T](implicit format: Format[T]) = new Format[Option[T]] {
     import BoxReaderDeltaF._    
 
@@ -27,6 +30,15 @@ object BasicFormats {
       case Some(v) => format.replace(v, boxId)
       case None => nothing
     }
+
+    def modify(option: Option[T], boxId: Long): BoxReaderScript[Unit] = option match {
+      case Some(v) => format.modify(v, boxId)
+      case None => nothing
+    }
+
+    //No modifications for Box[Option[T]] - use replace.
+    def modifyBox(b: Box[Option[T]]): BoxReaderScript[Unit] = nothing
+
   }
 
   /**
@@ -45,6 +57,8 @@ object BasicFormats {
     def write(t: T) = delegate.write(t)
     def read = delegate.read
     def replace(t: T, boxId: Long) = delegate.replace(t, boxId)
+    def modify(t: T, boxId: Long) = delegate.modify(t, boxId)
+    def modifyBox(b: Box[T]) = delegate.modifyBox(b)
   }
 
 }

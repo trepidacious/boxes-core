@@ -160,6 +160,36 @@ object NodeFormats {
     }
   }
 
+  private def modifyField[T](n: Product, index: Int, boxId: Long)(implicit f: Format[T]) = {
+    import BoxReaderDeltaF._
+
+    val box = n.productElement(index).asInstanceOf[Box[T]]
+
+    //If this is our box, pass on to modifyBox for the Format of the box's type
+    if (box.id == boxId) {
+      f.modifyBox(box)
+      
+      //If this is not our box, recurse to its contents
+    } else {
+      for {
+        t <- get(box)
+        _ <- f.modify(t, boxId)
+      } yield ()
+    }
+  }
+
+  private def modifyBoxWithAction[N](box: Box[N], readsAction: Option[Reads[Action[N]]]) = {
+    import BoxReaderDeltaF._
+    //If we have a Reads[Action], use it to read an action from tokens
+    //and then perform the action
+    readsAction.map (r => {
+      for {
+        action <- r.read
+        _ <- embedBoxScript(action.act(box))
+      } yield ()
+    }).getOrElse(nothing)
+  }    
+
   // ############################################################
   // ############################################################
   // ##  Auto generated code for each different arity of Node  ##
@@ -212,6 +242,12 @@ object NodeFormats {
       _ <- replaceField[P1](n, 0, boxId)
     } yield ()
 
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
+
   }
     
 
@@ -263,6 +299,13 @@ object NodeFormats {
       _ <- replaceField[P1](n, 0, boxId)
       _ <- replaceField[P2](n, 1, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -318,6 +361,14 @@ object NodeFormats {
       _ <- replaceField[P2](n, 1, boxId)
       _ <- replaceField[P3](n, 2, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -376,6 +427,15 @@ object NodeFormats {
       _ <- replaceField[P3](n, 2, boxId)
       _ <- replaceField[P4](n, 3, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -437,6 +497,16 @@ object NodeFormats {
       _ <- replaceField[P4](n, 3, boxId)
       _ <- replaceField[P5](n, 4, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -501,6 +571,17 @@ object NodeFormats {
       _ <- replaceField[P5](n, 4, boxId)
       _ <- replaceField[P6](n, 5, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -568,6 +649,18 @@ object NodeFormats {
       _ <- replaceField[P6](n, 5, boxId)
       _ <- replaceField[P7](n, 6, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -638,6 +731,19 @@ object NodeFormats {
       _ <- replaceField[P7](n, 6, boxId)
       _ <- replaceField[P8](n, 7, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -711,6 +817,20 @@ object NodeFormats {
       _ <- replaceField[P8](n, 7, boxId)
       _ <- replaceField[P9](n, 8, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -787,6 +907,21 @@ object NodeFormats {
       _ <- replaceField[P9](n, 8, boxId)
       _ <- replaceField[P10](n, 9, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P10](n, 9, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -866,6 +1001,22 @@ object NodeFormats {
       _ <- replaceField[P10](n, 9, boxId)
       _ <- replaceField[P11](n, 10, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P10](n, 9, boxId)
+      _ <- modifyField[P11](n, 10, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -948,6 +1099,23 @@ object NodeFormats {
       _ <- replaceField[P11](n, 10, boxId)
       _ <- replaceField[P12](n, 11, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P10](n, 9, boxId)
+      _ <- modifyField[P11](n, 10, boxId)
+      _ <- modifyField[P12](n, 11, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1033,6 +1201,24 @@ object NodeFormats {
       _ <- replaceField[P12](n, 11, boxId)
       _ <- replaceField[P13](n, 12, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P10](n, 9, boxId)
+      _ <- modifyField[P11](n, 10, boxId)
+      _ <- modifyField[P12](n, 11, boxId)
+      _ <- modifyField[P13](n, 12, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1121,6 +1307,25 @@ object NodeFormats {
       _ <- replaceField[P13](n, 12, boxId)
       _ <- replaceField[P14](n, 13, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P10](n, 9, boxId)
+      _ <- modifyField[P11](n, 10, boxId)
+      _ <- modifyField[P12](n, 11, boxId)
+      _ <- modifyField[P13](n, 12, boxId)
+      _ <- modifyField[P14](n, 13, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1212,6 +1417,26 @@ object NodeFormats {
       _ <- replaceField[P14](n, 13, boxId)
       _ <- replaceField[P15](n, 14, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P10](n, 9, boxId)
+      _ <- modifyField[P11](n, 10, boxId)
+      _ <- modifyField[P12](n, 11, boxId)
+      _ <- modifyField[P13](n, 12, boxId)
+      _ <- modifyField[P14](n, 13, boxId)
+      _ <- modifyField[P15](n, 14, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1306,6 +1531,27 @@ object NodeFormats {
       _ <- replaceField[P15](n, 14, boxId)
       _ <- replaceField[P16](n, 15, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P10](n, 9, boxId)
+      _ <- modifyField[P11](n, 10, boxId)
+      _ <- modifyField[P12](n, 11, boxId)
+      _ <- modifyField[P13](n, 12, boxId)
+      _ <- modifyField[P14](n, 13, boxId)
+      _ <- modifyField[P15](n, 14, boxId)
+      _ <- modifyField[P16](n, 15, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1403,6 +1649,28 @@ object NodeFormats {
       _ <- replaceField[P16](n, 15, boxId)
       _ <- replaceField[P17](n, 16, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P10](n, 9, boxId)
+      _ <- modifyField[P11](n, 10, boxId)
+      _ <- modifyField[P12](n, 11, boxId)
+      _ <- modifyField[P13](n, 12, boxId)
+      _ <- modifyField[P14](n, 13, boxId)
+      _ <- modifyField[P15](n, 14, boxId)
+      _ <- modifyField[P16](n, 15, boxId)
+      _ <- modifyField[P17](n, 16, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1503,6 +1771,29 @@ object NodeFormats {
       _ <- replaceField[P17](n, 16, boxId)
       _ <- replaceField[P18](n, 17, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P10](n, 9, boxId)
+      _ <- modifyField[P11](n, 10, boxId)
+      _ <- modifyField[P12](n, 11, boxId)
+      _ <- modifyField[P13](n, 12, boxId)
+      _ <- modifyField[P14](n, 13, boxId)
+      _ <- modifyField[P15](n, 14, boxId)
+      _ <- modifyField[P16](n, 15, boxId)
+      _ <- modifyField[P17](n, 16, boxId)
+      _ <- modifyField[P18](n, 17, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1606,6 +1897,30 @@ object NodeFormats {
       _ <- replaceField[P18](n, 17, boxId)
       _ <- replaceField[P19](n, 18, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P10](n, 9, boxId)
+      _ <- modifyField[P11](n, 10, boxId)
+      _ <- modifyField[P12](n, 11, boxId)
+      _ <- modifyField[P13](n, 12, boxId)
+      _ <- modifyField[P14](n, 13, boxId)
+      _ <- modifyField[P15](n, 14, boxId)
+      _ <- modifyField[P16](n, 15, boxId)
+      _ <- modifyField[P17](n, 16, boxId)
+      _ <- modifyField[P18](n, 17, boxId)
+      _ <- modifyField[P19](n, 18, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1712,6 +2027,31 @@ object NodeFormats {
       _ <- replaceField[P19](n, 18, boxId)
       _ <- replaceField[P20](n, 19, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P10](n, 9, boxId)
+      _ <- modifyField[P11](n, 10, boxId)
+      _ <- modifyField[P12](n, 11, boxId)
+      _ <- modifyField[P13](n, 12, boxId)
+      _ <- modifyField[P14](n, 13, boxId)
+      _ <- modifyField[P15](n, 14, boxId)
+      _ <- modifyField[P16](n, 15, boxId)
+      _ <- modifyField[P17](n, 16, boxId)
+      _ <- modifyField[P18](n, 17, boxId)
+      _ <- modifyField[P19](n, 18, boxId)
+      _ <- modifyField[P20](n, 19, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1821,6 +2161,32 @@ object NodeFormats {
       _ <- replaceField[P20](n, 19, boxId)
       _ <- replaceField[P21](n, 20, boxId)
     } yield ()
+
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P10](n, 9, boxId)
+      _ <- modifyField[P11](n, 10, boxId)
+      _ <- modifyField[P12](n, 11, boxId)
+      _ <- modifyField[P13](n, 12, boxId)
+      _ <- modifyField[P14](n, 13, boxId)
+      _ <- modifyField[P15](n, 14, boxId)
+      _ <- modifyField[P16](n, 15, boxId)
+      _ <- modifyField[P17](n, 16, boxId)
+      _ <- modifyField[P18](n, 17, boxId)
+      _ <- modifyField[P19](n, 18, boxId)
+      _ <- modifyField[P20](n, 19, boxId)
+      _ <- modifyField[P21](n, 20, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1934,7 +2300,33 @@ object NodeFormats {
       _ <- replaceField[P22](n, 21, boxId)
     } yield ()
 
+    def modify(n: N, boxId: Long) = for {
+      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P10](n, 9, boxId)
+      _ <- modifyField[P11](n, 10, boxId)
+      _ <- modifyField[P12](n, 11, boxId)
+      _ <- modifyField[P13](n, 12, boxId)
+      _ <- modifyField[P14](n, 13, boxId)
+      _ <- modifyField[P15](n, 14, boxId)
+      _ <- modifyField[P16](n, 15, boxId)
+      _ <- modifyField[P17](n, 16, boxId)
+      _ <- modifyField[P18](n, 17, boxId)
+      _ <- modifyField[P19](n, 18, boxId)
+      _ <- modifyField[P20](n, 19, boxId)
+      _ <- modifyField[P21](n, 20, boxId)
+      _ <- modifyField[P22](n, 21, boxId)
+    } yield ()
+
+    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
+
   }
-
-
+    
 }
