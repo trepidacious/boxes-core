@@ -34,6 +34,7 @@ class Box[T](val id: Long) extends Identifiable {
 }
 
 object Box {
+  //TODO this should really be done better...
   private val nextId = new AtomicInteger(0)
   private[core] def newInstance[T](): Box[T] = new Box[T](nextId.getAndIncrement())
 }
