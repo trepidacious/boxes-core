@@ -32,7 +32,7 @@ object BoxTypes {
    * for example find one or more Boxes using arbitrary state and then write to them, possibly
    * transforming the value first.
    */
-  type BoxW[A] = A => BoxScript[Unit]
+  type BoxW[-A] = A => BoxScript[Unit]
 
   /**
    * Provides a BoxR and BoxW. Will often read and write the "same" state, however doesn't need to.

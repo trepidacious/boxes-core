@@ -15,7 +15,7 @@ import Scalaz._
 * Provides replacing of type T
 */
 @implicitNotFound(msg = "Cannot find Replaces type class for ${T}")
-trait Replaces[T] {
+trait Replaces[-T] {
   /**
    * Inspect an object of type T, and if it "contains" the Box with specified
    * boxId, return a script that will attempt to replace the contents of that
