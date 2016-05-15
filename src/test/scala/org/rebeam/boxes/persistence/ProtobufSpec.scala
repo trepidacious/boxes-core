@@ -92,7 +92,7 @@ class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
   }
 
   def duplicateIdenticalPersonList(boxLinkStrategy: NoDuplicatesLinkStrategy, nodeLinkStrategy: LinkStrategy) = {
-    implicit val personFormat = nodeFormat2(Person.apply, Person.default)("name", "age", nodeName = PresentationName("Person"), boxLinkStrategy, nodeLinkStrategy)
+    implicit val personFormat = nodeFormat2(Person.apply, Person.default)("name", "age", None, nodeName = PresentationName("Person"), boxLinkStrategy, nodeLinkStrategy)
 
     //Create two persons with equal contents, but not the same person (not identical),
     //and a list that contains each one twice

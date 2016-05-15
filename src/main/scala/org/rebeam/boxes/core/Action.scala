@@ -8,11 +8,10 @@ import scala.language.implicitConversions
 
 
 /**
- * Provides a BoxScript that acts on a Box[T]
+ * Provides a BoxScript that acts on a T
  */
-@implicitNotFound(msg = "Cannot find Action type class for ${T}")
 trait Action[T] {
-  def act(b: Box[T]): BoxScript[Unit]
+  def act(b: T): BoxScript[Unit]
 }
 
 

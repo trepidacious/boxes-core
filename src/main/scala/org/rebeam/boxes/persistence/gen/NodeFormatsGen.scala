@@ -32,14 +32,14 @@ object NodeFormatsGen {
 
     val replaceFields =         format(i => s"_ <- replaceField[P$i](n, ${i - 1}, boxId)", "\n      ")
 
-    val modifyFields =          format(i => s"_ <- modifyField[P$i](n, ${i - 1}, boxId)", "\n      ")
+    val modifyFields =          format(i => s"_ <- modifyField[P$i, N, A](n, ${i - 1}, boxId, readsAction)", "\n      ")
 
     val useDictEntriesCases =   format(i => s"case s if s == name$i => useDictEntry[P$i](n, ${i - 1}, link)", "\n              ")
 
     s"""
-      |  def nodeFormat$fieldCount[$fieldTypes, N <: Product](construct: ($constructorParameters) => N, default: BoxScript[N])
+      |  def nodeFormat$fieldCount[$fieldTypes, N <: Product, A <: Action[N]](construct: ($constructorParameters) => N, default: BoxScript[N])
       |      ($productNameParameters,
-      |      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      |      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
       |
       |    def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       |      import BoxWriterDeltaF._
@@ -86,8 +86,6 @@ object NodeFormatsGen {
       |    def modify(n: N, boxId: Long) = for {
       |      $modifyFields
       |    } yield ()
-      |
-      |    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
       |
       |  }
     """.stripMargin

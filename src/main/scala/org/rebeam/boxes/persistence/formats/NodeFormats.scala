@@ -160,16 +160,34 @@ object NodeFormats {
     }
   }
 
-  private def modifyField[T](n: Product, index: Int, boxId: Long)(implicit f: Format[T]) = {
+  private def modifyField[T, N <: Product, A <: Action[N]](n: N, index: Int, boxId: Long, readsAction: Option[Reads[A]])(implicit f: Format[T]) = {
     import BoxReaderDeltaF._
 
     val box = n.productElement(index).asInstanceOf[Box[T]]
 
-    //If this is our box, pass on to modifyBox for the Format of the box's type
+    //If this is our box and we have a readsAction, use it to read an action
+    //from tokens and then perform that action
     if (box.id == boxId) {
-      f.modifyBox(box)
+      readsAction.map (r => {
+        for {
+          token <- peek
+          
+          //If we are out of tokens, action has already been performed,
+          //so do nothing
+          _ <- if (token == EndToken) {
+            nothing
+            
+          //If we have tokens, read the action and perform it on the node
+          } else {
+            for {
+              action <- r.read
+              _ <- embedBoxScript(action.act(n))
+            } yield ()
+          }
+        } yield ()
+      }).getOrElse(nothing)
       
-      //If this is not our box, recurse to its contents
+    //If this is not our box, recurse to its contents
     } else {
       for {
         t <- get(box)
@@ -178,27 +196,15 @@ object NodeFormats {
     }
   }
 
-  private def modifyBoxWithAction[N](box: Box[N], readsAction: Option[Reads[Action[N]]]) = {
-    import BoxReaderDeltaF._
-    //If we have a Reads[Action], use it to read an action from tokens
-    //and then perform the action
-    readsAction.map (r => {
-      for {
-        action <- r.read
-        _ <- embedBoxScript(action.act(box))
-      } yield ()
-    }).getOrElse(nothing)
-  }    
-
   // ############################################################
   // ############################################################
   // ##  Auto generated code for each different arity of Node  ##
   // ############################################################
   // ############################################################
 
-  def nodeFormat1[P1: Format, N <: Product](construct: (Box[P1]) => N, default: BoxScript[N])
+  def nodeFormat1[P1: Format, N <: Product, A <: Action[N]](construct: (Box[P1]) => N, default: BoxScript[N])
       (name1: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -243,17 +249,15 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat2[P1: Format, P2: Format, N <: Product](construct: (Box[P1], Box[P2]) => N, default: BoxScript[N])
+  def nodeFormat2[P1: Format, P2: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2]) => N, default: BoxScript[N])
       (name1: String, name2: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -301,18 +305,16 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat3[P1: Format, P2: Format, P3: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3]) => N, default: BoxScript[N])
+  def nodeFormat3[P1: Format, P2: Format, P3: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -363,19 +365,17 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat4[P1: Format, P2: Format, P3: Format, P4: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4]) => N, default: BoxScript[N])
+  def nodeFormat4[P1: Format, P2: Format, P3: Format, P4: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -429,20 +429,18 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat5[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5]) => N, default: BoxScript[N])
+  def nodeFormat5[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -499,21 +497,19 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat6[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6]) => N, default: BoxScript[N])
+  def nodeFormat6[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -573,22 +569,20 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat7[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7]) => N, default: BoxScript[N])
+  def nodeFormat7[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -651,23 +645,21 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat8[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8]) => N, default: BoxScript[N])
+  def nodeFormat8[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -733,24 +725,22 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat9[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9]) => N, default: BoxScript[N])
+  def nodeFormat9[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -819,25 +809,23 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat10[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10]) => N, default: BoxScript[N])
+  def nodeFormat10[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String, name10: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -909,26 +897,24 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
-      _ <- modifyField[P10](n, 9, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat11[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11]) => N, default: BoxScript[N])
+  def nodeFormat11[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String, name10: String, name11: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -1003,27 +989,25 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
-      _ <- modifyField[P10](n, 9, boxId)
-      _ <- modifyField[P11](n, 10, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat12[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12]) => N, default: BoxScript[N])
+  def nodeFormat12[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String, name10: String, name11: String, name12: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -1101,28 +1085,26 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
-      _ <- modifyField[P10](n, 9, boxId)
-      _ <- modifyField[P11](n, 10, boxId)
-      _ <- modifyField[P12](n, 11, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat13[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13]) => N, default: BoxScript[N])
+  def nodeFormat13[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String, name10: String, name11: String, name12: String, name13: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -1203,29 +1185,27 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
-      _ <- modifyField[P10](n, 9, boxId)
-      _ <- modifyField[P11](n, 10, boxId)
-      _ <- modifyField[P12](n, 11, boxId)
-      _ <- modifyField[P13](n, 12, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat14[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14]) => N, default: BoxScript[N])
+  def nodeFormat14[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String, name10: String, name11: String, name12: String, name13: String, name14: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -1309,30 +1289,28 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
-      _ <- modifyField[P10](n, 9, boxId)
-      _ <- modifyField[P11](n, 10, boxId)
-      _ <- modifyField[P12](n, 11, boxId)
-      _ <- modifyField[P13](n, 12, boxId)
-      _ <- modifyField[P14](n, 13, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat15[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15]) => N, default: BoxScript[N])
+  def nodeFormat15[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String, name10: String, name11: String, name12: String, name13: String, name14: String, name15: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -1419,31 +1397,29 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
-      _ <- modifyField[P10](n, 9, boxId)
-      _ <- modifyField[P11](n, 10, boxId)
-      _ <- modifyField[P12](n, 11, boxId)
-      _ <- modifyField[P13](n, 12, boxId)
-      _ <- modifyField[P14](n, 13, boxId)
-      _ <- modifyField[P15](n, 14, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat16[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16]) => N, default: BoxScript[N])
+  def nodeFormat16[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String, name10: String, name11: String, name12: String, name13: String, name14: String, name15: String, name16: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -1533,32 +1509,30 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
-      _ <- modifyField[P10](n, 9, boxId)
-      _ <- modifyField[P11](n, 10, boxId)
-      _ <- modifyField[P12](n, 11, boxId)
-      _ <- modifyField[P13](n, 12, boxId)
-      _ <- modifyField[P14](n, 13, boxId)
-      _ <- modifyField[P15](n, 14, boxId)
-      _ <- modifyField[P16](n, 15, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat17[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, P17: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16], Box[P17]) => N, default: BoxScript[N])
+  def nodeFormat17[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, P17: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16], Box[P17]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String, name10: String, name11: String, name12: String, name13: String, name14: String, name15: String, name16: String, name17: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -1651,33 +1625,31 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
-      _ <- modifyField[P10](n, 9, boxId)
-      _ <- modifyField[P11](n, 10, boxId)
-      _ <- modifyField[P12](n, 11, boxId)
-      _ <- modifyField[P13](n, 12, boxId)
-      _ <- modifyField[P14](n, 13, boxId)
-      _ <- modifyField[P15](n, 14, boxId)
-      _ <- modifyField[P16](n, 15, boxId)
-      _ <- modifyField[P17](n, 16, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
+      _ <- modifyField[P17, N, A](n, 16, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat18[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, P17: Format, P18: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16], Box[P17], Box[P18]) => N, default: BoxScript[N])
+  def nodeFormat18[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, P17: Format, P18: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16], Box[P17], Box[P18]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String, name10: String, name11: String, name12: String, name13: String, name14: String, name15: String, name16: String, name17: String, name18: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -1773,34 +1745,32 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
-      _ <- modifyField[P10](n, 9, boxId)
-      _ <- modifyField[P11](n, 10, boxId)
-      _ <- modifyField[P12](n, 11, boxId)
-      _ <- modifyField[P13](n, 12, boxId)
-      _ <- modifyField[P14](n, 13, boxId)
-      _ <- modifyField[P15](n, 14, boxId)
-      _ <- modifyField[P16](n, 15, boxId)
-      _ <- modifyField[P17](n, 16, boxId)
-      _ <- modifyField[P18](n, 17, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
+      _ <- modifyField[P17, N, A](n, 16, boxId, readsAction)
+      _ <- modifyField[P18, N, A](n, 17, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat19[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, P17: Format, P18: Format, P19: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16], Box[P17], Box[P18], Box[P19]) => N, default: BoxScript[N])
+  def nodeFormat19[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, P17: Format, P18: Format, P19: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16], Box[P17], Box[P18], Box[P19]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String, name10: String, name11: String, name12: String, name13: String, name14: String, name15: String, name16: String, name17: String, name18: String, name19: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -1899,35 +1869,33 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
-      _ <- modifyField[P10](n, 9, boxId)
-      _ <- modifyField[P11](n, 10, boxId)
-      _ <- modifyField[P12](n, 11, boxId)
-      _ <- modifyField[P13](n, 12, boxId)
-      _ <- modifyField[P14](n, 13, boxId)
-      _ <- modifyField[P15](n, 14, boxId)
-      _ <- modifyField[P16](n, 15, boxId)
-      _ <- modifyField[P17](n, 16, boxId)
-      _ <- modifyField[P18](n, 17, boxId)
-      _ <- modifyField[P19](n, 18, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
+      _ <- modifyField[P17, N, A](n, 16, boxId, readsAction)
+      _ <- modifyField[P18, N, A](n, 17, boxId, readsAction)
+      _ <- modifyField[P19, N, A](n, 18, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat20[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, P17: Format, P18: Format, P19: Format, P20: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16], Box[P17], Box[P18], Box[P19], Box[P20]) => N, default: BoxScript[N])
+  def nodeFormat20[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, P17: Format, P18: Format, P19: Format, P20: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16], Box[P17], Box[P18], Box[P19], Box[P20]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String, name10: String, name11: String, name12: String, name13: String, name14: String, name15: String, name16: String, name17: String, name18: String, name19: String, name20: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -2029,36 +1997,34 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
-      _ <- modifyField[P10](n, 9, boxId)
-      _ <- modifyField[P11](n, 10, boxId)
-      _ <- modifyField[P12](n, 11, boxId)
-      _ <- modifyField[P13](n, 12, boxId)
-      _ <- modifyField[P14](n, 13, boxId)
-      _ <- modifyField[P15](n, 14, boxId)
-      _ <- modifyField[P16](n, 15, boxId)
-      _ <- modifyField[P17](n, 16, boxId)
-      _ <- modifyField[P18](n, 17, boxId)
-      _ <- modifyField[P19](n, 18, boxId)
-      _ <- modifyField[P20](n, 19, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
+      _ <- modifyField[P17, N, A](n, 16, boxId, readsAction)
+      _ <- modifyField[P18, N, A](n, 17, boxId, readsAction)
+      _ <- modifyField[P19, N, A](n, 18, boxId, readsAction)
+      _ <- modifyField[P20, N, A](n, 19, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat21[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, P17: Format, P18: Format, P19: Format, P20: Format, P21: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16], Box[P17], Box[P18], Box[P19], Box[P20], Box[P21]) => N, default: BoxScript[N])
+  def nodeFormat21[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, P17: Format, P18: Format, P19: Format, P20: Format, P21: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16], Box[P17], Box[P18], Box[P19], Box[P20], Box[P21]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String, name10: String, name11: String, name12: String, name13: String, name14: String, name15: String, name16: String, name17: String, name18: String, name19: String, name20: String, name21: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -2163,37 +2129,35 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
-      _ <- modifyField[P10](n, 9, boxId)
-      _ <- modifyField[P11](n, 10, boxId)
-      _ <- modifyField[P12](n, 11, boxId)
-      _ <- modifyField[P13](n, 12, boxId)
-      _ <- modifyField[P14](n, 13, boxId)
-      _ <- modifyField[P15](n, 14, boxId)
-      _ <- modifyField[P16](n, 15, boxId)
-      _ <- modifyField[P17](n, 16, boxId)
-      _ <- modifyField[P18](n, 17, boxId)
-      _ <- modifyField[P19](n, 18, boxId)
-      _ <- modifyField[P20](n, 19, boxId)
-      _ <- modifyField[P21](n, 20, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
+      _ <- modifyField[P17, N, A](n, 16, boxId, readsAction)
+      _ <- modifyField[P18, N, A](n, 17, boxId, readsAction)
+      _ <- modifyField[P19, N, A](n, 18, boxId, readsAction)
+      _ <- modifyField[P20, N, A](n, 19, boxId, readsAction)
+      _ <- modifyField[P21, N, A](n, 20, boxId, readsAction)
     } yield ()
-
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
 
   }
     
 
-  def nodeFormat22[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, P17: Format, P18: Format, P19: Format, P20: Format, P21: Format, P22: Format, N <: Product](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16], Box[P17], Box[P18], Box[P19], Box[P20], Box[P21], Box[P22]) => N, default: BoxScript[N])
+  def nodeFormat22[P1: Format, P2: Format, P3: Format, P4: Format, P5: Format, P6: Format, P7: Format, P8: Format, P9: Format, P10: Format, P11: Format, P12: Format, P13: Format, P14: Format, P15: Format, P16: Format, P17: Format, P18: Format, P19: Format, P20: Format, P21: Format, P22: Format, N <: Product, A <: Action[N]](construct: (Box[P1], Box[P2], Box[P3], Box[P4], Box[P5], Box[P6], Box[P7], Box[P8], Box[P9], Box[P10], Box[P11], Box[P12], Box[P13], Box[P14], Box[P15], Box[P16], Box[P17], Box[P18], Box[P19], Box[P20], Box[P21], Box[P22]) => N, default: BoxScript[N])
       (name1: String, name2: String, name3: String, name4: String, name5: String, name6: String, name7: String, name8: String, name9: String, name10: String, name11: String, name12: String, name13: String, name14: String, name15: String, name16: String, name17: String, name18: String, name19: String, name20: String, name21: String, name22: String,
-      nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = EmptyLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
+      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = EmptyLinks) : Format[N] = new Format[N] {
 
     def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -2301,32 +2265,30 @@ object NodeFormats {
     } yield ()
 
     def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1](n, 0, boxId)
-      _ <- modifyField[P2](n, 1, boxId)
-      _ <- modifyField[P3](n, 2, boxId)
-      _ <- modifyField[P4](n, 3, boxId)
-      _ <- modifyField[P5](n, 4, boxId)
-      _ <- modifyField[P6](n, 5, boxId)
-      _ <- modifyField[P7](n, 6, boxId)
-      _ <- modifyField[P8](n, 7, boxId)
-      _ <- modifyField[P9](n, 8, boxId)
-      _ <- modifyField[P10](n, 9, boxId)
-      _ <- modifyField[P11](n, 10, boxId)
-      _ <- modifyField[P12](n, 11, boxId)
-      _ <- modifyField[P13](n, 12, boxId)
-      _ <- modifyField[P14](n, 13, boxId)
-      _ <- modifyField[P15](n, 14, boxId)
-      _ <- modifyField[P16](n, 15, boxId)
-      _ <- modifyField[P17](n, 16, boxId)
-      _ <- modifyField[P18](n, 17, boxId)
-      _ <- modifyField[P19](n, 18, boxId)
-      _ <- modifyField[P20](n, 19, boxId)
-      _ <- modifyField[P21](n, 20, boxId)
-      _ <- modifyField[P22](n, 21, boxId)
+      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
+      _ <- modifyField[P17, N, A](n, 16, boxId, readsAction)
+      _ <- modifyField[P18, N, A](n, 17, boxId, readsAction)
+      _ <- modifyField[P19, N, A](n, 18, boxId, readsAction)
+      _ <- modifyField[P20, N, A](n, 19, boxId, readsAction)
+      _ <- modifyField[P21, N, A](n, 20, boxId, readsAction)
+      _ <- modifyField[P22, N, A](n, 21, boxId, readsAction)
     } yield ()
 
-    def modifyBox(box: Box[N]) = BoxReaderDeltaF.nothing
-
   }
-    
+        
 }

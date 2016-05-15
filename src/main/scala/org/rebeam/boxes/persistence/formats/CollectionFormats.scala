@@ -150,7 +150,7 @@ object CollectionFormats extends LowPriorityCollectionFormats {
     } yield ()
 
     //TODO we could probably provide a reasonable set of actions here, e.g. clear, add etc.
-    override def modifyBox(box: Box[List[T]]) = nothing
+    // override def modifyBox(box: Box[List[T]]) = nothing
 
   }
 
@@ -193,7 +193,7 @@ object CollectionFormats extends LowPriorityCollectionFormats {
     } yield ()
 
     //TODO we could probably provide a reasonable set of actions here, e.g. clear, add etc.
-    override def modifyBox(box: Box[Set[T]]) = nothing
+    // override def modifyBox(box: Box[Set[T]]) = nothing
 
   }
 

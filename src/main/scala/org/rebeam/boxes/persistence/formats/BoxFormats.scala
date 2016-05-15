@@ -109,22 +109,22 @@ private class BoxFormat[T](linkStrategy: LinkStrategy)(implicit format: Format[T
 
   override def modify(box: Box[T], boxId: Long) = {
     import BoxReaderDeltaF._
-    //If this is our box, delegate to modifyBox based on its type
-    if (box.id == boxId) {
-      format.modifyBox(box)
-
-    //If this is not our box, recurse to its contents
-    } else {
+    // //If this is our box, delegate to modifyBox based on its type
+    // if (box.id == boxId) {
+    //   format.modifyBox(box)
+    // 
+    // //If this is not our box, recurse to its contents
+    // } else {
       for {
         t <- get(box)
         _ <- format.modify(t, boxId)
       } yield ()
-    }
+    // }
   }
 
   //No modification for a Box[Box[T]] - firstly, probably don't use this type,
   //secondly, just use replace if you have to change contents
-  override def modifyBox(b: Box[Box[T]]): BoxReaderScript[Unit] = BoxReaderDeltaF.nothing
+  // override def modifyBox(b: Box[Box[T]]): BoxReaderScript[Unit] = BoxReaderDeltaF.nothing
 
 }
 

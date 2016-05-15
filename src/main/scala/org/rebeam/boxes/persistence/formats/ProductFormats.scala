@@ -27,18 +27,6 @@ object ProductFormats {
     f.modify(t, boxId)
   }
 
-  private def modifyBoxWithAction[P](box: Box[P], readsAction: Option[Reads[Action[P]]]) = {
-    import BoxReaderDeltaF._
-    //If we have a Reads[Action], use it to read an action from tokens
-    //and then perform the action
-    readsAction.map (r => {
-      for {
-        action <- r.read
-        _ <- embedBoxScript(action.act(box))
-      } yield ()
-    }).getOrElse(nothing)
-  }    
-
   def productFormat0[P <: Product](construct: => P)
                                   (productName: TokenName = NoName) : Format[P] = new Format[P] {
 

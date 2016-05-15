@@ -58,7 +58,7 @@ object BasicFormats {
     def read = delegate.read
     def replace(t: T, boxId: Long) = delegate.replace(t, boxId)
     def modify(t: T, boxId: Long) = delegate.modify(t, boxId)
-    def modifyBox(b: Box[T]) = delegate.modifyBox(b)
+    // def modifyBox(b: Box[T]) = delegate.modifyBox(b)
   }
 
 }
