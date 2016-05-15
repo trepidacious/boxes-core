@@ -29,6 +29,9 @@ class BufferTokenReader(tokens: List[Token]) extends TokenReader {
     buffer.remove(0)
   }
   def close() {}
+  
+  def remainingTokens: List[Token] = buffer.toList
+  
 }
 
 object BufferIO {
