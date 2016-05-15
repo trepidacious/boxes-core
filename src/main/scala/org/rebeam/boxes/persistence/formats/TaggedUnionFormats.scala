@@ -25,7 +25,7 @@ object TaggedUnionFormats {
     def read: BoxReaderScript[B] = r.read.map((a: A) => a)
   }
   
-  def taggedUnionFormat[T](r: (String) => Option[Reads[T]], w: (T) => Tagged[T]): Format[T] = new Format[T] {
+  def taggedUnionFormat[T](r: PartialFunction[String, Reads[T]], w: (T) => Tagged[T]): Format[T] = new Format[T] {
     
     def write(t: T): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
@@ -56,7 +56,7 @@ object TaggedUnionFormats {
           case x => throw new IncorrectTokenException("Expected a DictEntry(s, LinkEmpty), got " + x)
         })
     
-        reads = r(tag).get
+        reads = if (r.isDefinedAt(tag)) r(tag) else throw new IncorrectTokenException("No format defined for type tag " + tag)
     
         t <- reads.read
         

@@ -50,13 +50,19 @@ class TaggedUnionFormatsSpec extends WordSpec with PropertyChecks with ShouldMat
     //Note we have to specify the union type OneOrTwo
     taggedUnionFormat[OneOrTwo](
       {
-        case "one" => Some(oneFormat)
-        case "two" => Some(twoFormat)
-        case _ => None
+        //Provide a format for each tag
+        case "one" => oneFormat
+        case "two" => twoFormat
       },
       {
+        //Provide a tag (and implicit format) for each type
+        //We must also provide the value, since taggedUnionFormat needs a
+        //thing that is covariant in the ADT type, so we can use it with
+        //a OneOrTwo rather than a One or a Two.
         case o: One => Tagged("one", o)
-        case t: Two => Tagged("two", t)
+        
+        //Can also provide the format explicitly
+        case t: Two => Tagged("two", t)(twoFormat)
       }
     )
   }
