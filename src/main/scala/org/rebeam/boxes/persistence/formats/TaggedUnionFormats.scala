@@ -6,23 +6,26 @@ import BoxTypes._
 
 import scala.language.implicitConversions
 
-case class ValueAndFormat[T](tag: String, t: T)(implicit f: Format[T]) {
-  val write = f.write(t)
-  def replace(boxId: Long) = f.replace(t, boxId)
-  def modify(boxId: Long) = f.modify(t, boxId)
-}
-
 /**
   * Functions for making Formats for union types, e.g. ADTs, by tagging the
   * type with a string
   */
 object TaggedUnionFormats {
+
+  /**
+    * Combine a tag and value (and an implicit format), to produce something covariant...
+    */
+  case class Tagged[+T](tag: String, t: T)(implicit f: Format[T]) {
+    val write = f.write(t)
+    def replace(boxId: Long) = f.replace(t, boxId)
+    def modify(boxId: Long) = f.modify(t, boxId)
+  }
   
   implicit def readAs[A, B >: A](r: Reads[A]): Reads[B] = new Reads[B] {
     def read: BoxReaderScript[B] = r.read.map((a: A) => a)
   }
   
-  def taggedUnionFormat[T](w: (T) => ValueAndFormat[T], r: (String) => Option[Reads[T]]): Format[T] = new Format[T] {
+  def taggedUnionFormat[T](r: (String) => Option[Reads[T]], w: (T) => Tagged[T]): Format[T] = new Format[T] {
     
     def write(t: T): BoxWriterScript[Unit] = {
       import BoxWriterDeltaF._
