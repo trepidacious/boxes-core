@@ -140,8 +140,6 @@ object ProductFormats {
       _ <- modifyField[P1](p, 0, boxId)
     } yield ()
 
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
-
   }
     
 
@@ -208,8 +206,6 @@ object ProductFormats {
       _ <- modifyField[P1](p, 0, boxId)
       _ <- modifyField[P2](p, 1, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -283,8 +279,6 @@ object ProductFormats {
       _ <- modifyField[P2](p, 1, boxId)
       _ <- modifyField[P3](p, 2, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -364,8 +358,6 @@ object ProductFormats {
       _ <- modifyField[P3](p, 2, boxId)
       _ <- modifyField[P4](p, 3, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -451,8 +443,6 @@ object ProductFormats {
       _ <- modifyField[P4](p, 3, boxId)
       _ <- modifyField[P5](p, 4, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -544,8 +534,6 @@ object ProductFormats {
       _ <- modifyField[P5](p, 4, boxId)
       _ <- modifyField[P6](p, 5, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -643,8 +631,6 @@ object ProductFormats {
       _ <- modifyField[P6](p, 5, boxId)
       _ <- modifyField[P7](p, 6, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -748,8 +734,6 @@ object ProductFormats {
       _ <- modifyField[P7](p, 6, boxId)
       _ <- modifyField[P8](p, 7, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -859,8 +843,6 @@ object ProductFormats {
       _ <- modifyField[P8](p, 7, boxId)
       _ <- modifyField[P9](p, 8, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -976,8 +958,6 @@ object ProductFormats {
       _ <- modifyField[P9](p, 8, boxId)
       _ <- modifyField[P10](p, 9, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1099,8 +1079,6 @@ object ProductFormats {
       _ <- modifyField[P10](p, 9, boxId)
       _ <- modifyField[P11](p, 10, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1228,8 +1206,6 @@ object ProductFormats {
       _ <- modifyField[P11](p, 10, boxId)
       _ <- modifyField[P12](p, 11, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1363,8 +1339,6 @@ object ProductFormats {
       _ <- modifyField[P12](p, 11, boxId)
       _ <- modifyField[P13](p, 12, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1504,8 +1478,6 @@ object ProductFormats {
       _ <- modifyField[P13](p, 12, boxId)
       _ <- modifyField[P14](p, 13, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1651,8 +1623,6 @@ object ProductFormats {
       _ <- modifyField[P14](p, 13, boxId)
       _ <- modifyField[P15](p, 14, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1804,8 +1774,6 @@ object ProductFormats {
       _ <- modifyField[P15](p, 14, boxId)
       _ <- modifyField[P16](p, 15, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -1963,8 +1931,6 @@ object ProductFormats {
       _ <- modifyField[P16](p, 15, boxId)
       _ <- modifyField[P17](p, 16, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -2128,8 +2094,6 @@ object ProductFormats {
       _ <- modifyField[P17](p, 16, boxId)
       _ <- modifyField[P18](p, 17, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -2299,8 +2263,6 @@ object ProductFormats {
       _ <- modifyField[P18](p, 17, boxId)
       _ <- modifyField[P19](p, 18, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -2476,8 +2438,6 @@ object ProductFormats {
       _ <- modifyField[P19](p, 18, boxId)
       _ <- modifyField[P20](p, 19, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -2659,8 +2619,6 @@ object ProductFormats {
       _ <- modifyField[P20](p, 19, boxId)
       _ <- modifyField[P21](p, 20, boxId)
     } yield ()
-
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
 
   }
     
@@ -2849,8 +2807,6 @@ object ProductFormats {
       _ <- modifyField[P22](p, 21, boxId)
     } yield ()
 
-    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
-
   }
-    
+        
 }

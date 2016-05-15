@@ -101,8 +101,6 @@ object ProductFormatsGen {
       |      $modifyFields
       |    } yield ()
       |
-      |    def modifyBox(box: Box[P]) = BoxReaderDeltaF.nothing
-      |
       |  }
     """.stripMargin
   }
