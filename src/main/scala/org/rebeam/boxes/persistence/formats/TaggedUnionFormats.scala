@@ -21,6 +21,10 @@ object TaggedUnionFormats {
     def modify(boxId: Long) = f.modify(t, boxId)
   }
   
+  /**
+    * Widens Reads type classes - usually needed to turn Reads[SpecificADTClass]
+    * into Reads[ADTTrait]
+    */
   implicit def readAs[A, B >: A](r: Reads[A]): Reads[B] = new Reads[B] {
     def read: BoxReaderScript[B] = r.read.map((a: A) => a)
   }
