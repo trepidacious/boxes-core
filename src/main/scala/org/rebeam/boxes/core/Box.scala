@@ -30,6 +30,7 @@ class Box[T](val id: Long) extends Identifiable {
   lazy val r = BoxScriptImports.get(this)
   lazy val w = (t: T) => BoxScriptImports.set(this, t)
   lazy val m = BoxM(r, w)
+  def readAs[A >: T] = r.map(t => t: A)
 
 }
 
