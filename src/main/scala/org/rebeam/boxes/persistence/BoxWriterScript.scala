@@ -19,38 +19,33 @@ object BoxWriterScript {
    * @param rad       The initial RevisionAndDeltas
    * @param runReactions  True to run reactions when they are created, or when boxes are written. False to ignore reactions
    * @tparam A        The result type of the script
-   * @return          (new RevisionAndDeltas, script result)
+   * @return          (Script result, token writer after run, token ids after run)
    */
-  @tailrec final def run[A](script: BoxWriterScript[A], rev: Revision, writer: TokenWriter): (A, TokenWriter) = script.resume match {
+  @tailrec final def run[A](script: BoxWriterScript[A], rev: Revision, writer: TokenWriter, ids: TokenIds): (A, TokenWriter, TokenIds) = script.resume match {
 
     case -\/(ReadBoxDeltaF(b, toNext)) =>
       val value = b.get(rev)
       val next = toNext(value)
-      run(next, rev, writer)
+      run(next, rev, writer, ids)
 
     case -\/(JustF(t, toNext)) =>
       val next = toNext(t)
-      run(next, rev, writer)
+      run(next, rev, writer, ids)
 
     case -\/(PutTokenF(t, next)) =>
       writer.write(t)
-      run(next, rev, writer)      
+      run(next, rev, writer, ids)
 
     case -\/(CacheF(thing, toNext)) =>
-      val cr = writer.cache(thing)
+      val cr = ids.cache(thing)
       val next = toNext(cr)
-      run(next, rev, writer)      
-
-    case -\/(CacheBoxF(box, toNext)) =>
-      val cr = writer.cacheBox(box.id)
-      val next = toNext(cr)
-      run(next, rev, writer)      
+      run(next, rev, writer, ids)
 
     case -\/(RevisionIndexF(toNext)) =>
       val next = toNext(rev.index)
-      run(next, rev, writer)
+      run(next, rev, writer, ids)
 
-    case \/-(x) => (x.asInstanceOf[A], writer)
+    case \/-(x) => (x.asInstanceOf[A], writer, ids)
   }
 
 }

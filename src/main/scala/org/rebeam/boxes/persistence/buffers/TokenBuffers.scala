@@ -35,9 +35,9 @@ class BufferTokenReader(tokens: List[Token]) extends TokenReader {
 }
 
 object BufferIO {
-  def toTokens[T :Writes](t: T) = {
+  def toTokens[T :Writes](t: T, ids: TokenIds = new TokenIdsDefault()) = {
     val w = BufferTokenWriter()
-    Shelf.runWriter(Writing.write(t), w)
+    Shelf.runWriter(Writing.write(t), w, ids)
     w.tokens
   }
 

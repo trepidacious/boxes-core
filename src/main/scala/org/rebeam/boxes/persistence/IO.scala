@@ -18,21 +18,21 @@ trait ReaderWriterFactory {
 
 class IO(val factory: ReaderWriterFactory) {
 
-  def write[T: Writes](t: T, output: OutputStream) = {
+  def write[T: Writes](t: T, output: OutputStream, ids: TokenIds = new TokenIdsDefault()) = {
     val script = implicitly[Writes[T]].write(t)
     val writer = factory.writer(output)
     try {
-      Shelf.runWriter(script, writer)
+      Shelf.runWriter(script, writer, ids)
     } finally {
       writer.close()
     }
   }
   
-  def writeRevision[T: Writes](r: Revision, t: T, output: OutputStream) = {
+  def writeRevision[T: Writes](r: Revision, t: T, output: OutputStream, ids: TokenIds = new TokenIdsDefault()) = {
     val script = implicitly[Writes[T]].write(t)
     val writer = factory.writer(output)
     try {
-      BoxWriterScript.run(script, r, writer)._1
+      BoxWriterScript.run(script, r, writer, ids)._1
     } finally {
       writer.close()
     }    

@@ -88,7 +88,6 @@ case class EmbedBoxScript[Next, T](script: BoxScript[T], toNext: T => Next) exte
 case class PutTokenF[Next](t: Token, next: Next) extends BoxWriterDeltaF[Next]
 
 case class CacheF[Next](t: Any, toNext: CacheResult => Next) extends BoxWriterDeltaF[Next]
-case class CacheBoxF[Next, T](box: Box[T], toNext: CacheResult => Next) extends BoxWriterDeltaF[Next]
 
 object BoxDeltaF {
   val functor: Functor[BoxDeltaF] = new Functor[BoxDeltaF] {
@@ -266,7 +265,6 @@ object BoxWriterDeltaF {
       case PutTokenF(t, next) => PutTokenF(t, f(next))
 
       case CacheF(t, toNext) => CacheF(t, toNext andThen f)
-      case CacheBoxF(box, toNext) => CacheF(box, toNext andThen f)
 
       case RevisionIndexF(toNext) => RevisionIndexF(toNext andThen f)
     }
@@ -283,9 +281,6 @@ object BoxWriterDeltaF {
 
   def cache(thing: Any): BoxWriterScript[CacheResult]
     = liftF(CacheF(thing, identity[CacheResult]): BoxWriterDeltaF[CacheResult])(boxWriterDeltaFunctor)
-
-  def cacheBox[T](box: Box[T]): BoxWriterScript[CacheResult]
-    = liftF(CacheBoxF(box, identity[CacheResult]): BoxWriterDeltaF[CacheResult])(boxWriterDeltaFunctor)
 
   val nothing = just(())
 

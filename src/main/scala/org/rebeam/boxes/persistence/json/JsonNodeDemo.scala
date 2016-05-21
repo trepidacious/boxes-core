@@ -32,7 +32,7 @@ object JsonNodeDemo extends App {
     def default(name: String, friend: Option[Person]): BoxScript[Person] = (create(name) |@| create(friend)){Person(_, _)}
   }
 
-  implicit lazy val PersonFormat: Format[Person] = lazyFormat(nodeFormat2(Person.apply, Person.default)("name", "friend", boxLinkStrategy = IdLinks))
+  implicit lazy val PersonFormat: Format[Person] = lazyFormat(nodeFormat2(Person.apply, Person.default)("name", "friend"))
 
   val alicia = atomic(Person.default("Alicia", None))
   val bob = atomic(Person.default("Bob", Some(alicia)))

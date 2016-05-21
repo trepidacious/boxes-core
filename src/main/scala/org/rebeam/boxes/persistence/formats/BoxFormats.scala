@@ -14,7 +14,7 @@ private class BoxFormat[T](linkStrategy: LinkStrategy)(implicit format: Format[T
   override def write(box: Box[T]) = {
     import BoxWriterDeltaF._
     linkStrategy match {
-      case AllLinks => cacheBox(box) flatMap {
+      case AllLinks => cache(box) flatMap {
         case Cached(id) => put(BoxToken(LinkRef(id)))
         case New(id) => for {
           _ <- put(BoxToken(LinkId(id)))
@@ -23,7 +23,7 @@ private class BoxFormat[T](linkStrategy: LinkStrategy)(implicit format: Format[T
         } yield ()
       }
 
-      case EmptyLinks => cacheBox(box) flatMap {
+      case EmptyLinks => cache(box) flatMap {
         case Cached(id) => throw new BoxCacheException("Box id " + id + " was already cached, but boxLinkStrategy is EmptyLinks")
         case New(id) => for {
           _ <- put(BoxToken(LinkEmpty))
@@ -32,7 +32,7 @@ private class BoxFormat[T](linkStrategy: LinkStrategy)(implicit format: Format[T
         } yield ()
       }
 
-      case IdLinks => cacheBox(box) flatMap {
+      case IdLinks => cache(box) flatMap {
         case Cached(id) => throw new BoxCacheException("Box id " + id + " was already cached, but boxLinkStrategy is IdLinks")
         case New(id) => for {
           _ <- put(BoxToken(LinkId(id)))

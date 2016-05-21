@@ -74,6 +74,7 @@ class JsonTokenWriter(writer: Writer, pretty: Boolean = false) extends TokenWrit
         }
         link match {
           case LinkEmpty => {}
+          case LinkId(id) => print(quoted("_id") + ":" + prettySpace + id + ",")
           case _ => throw new IncorrectTokenException("Cannot use OpenDict with " + link + " in json output")
         }
 
@@ -452,17 +453,17 @@ class JsonReaderWriterFactory(pretty: Boolean = false) extends ReaderWriterFacto
 }
 
 class JsonIO(pretty: Boolean = false) extends IO(new JsonReaderWriterFactory(pretty)) {
-  def toJsonString[T: Writes](t: T): String = {
+  def toJsonString[T: Writes](t: T, ids: TokenIds = new TokenIdsDefault()): String = {
     val sw = new StringWriter()
     val w = new JsonTokenWriter(sw, pretty)
-    Shelf.runWriter(Writing.write(t), w)
+    Shelf.runWriter(Writing.write(t), w, ids)
     sw.toString
   }
 
-  def toJsonString[T: Writes](r: Revision, t: T): String = {
+  def toJsonStringFromRevision[T: Writes](r: Revision, t: T, ids: TokenIds = new TokenIdsDefault()): String = {
     val sw = new StringWriter()
     val w = new JsonTokenWriter(sw, pretty)
-    BoxWriterScript.run(Writing.write(t), r, w)
+    BoxWriterScript.run(Writing.write(t), r, w, ids)
     sw.toString
   }
   

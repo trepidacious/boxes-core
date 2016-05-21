@@ -5,6 +5,7 @@ package org.rebeam.boxes.persistence
  */
 sealed trait CacheResult {
   def isCached: Boolean
+  def id: Long
 }
 
 /**
