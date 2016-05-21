@@ -18,7 +18,7 @@ trait ReaderWriterFactory {
 
 class IO(val factory: ReaderWriterFactory) {
 
-  def write[T: Writes](t: T, output: OutputStream, ids: TokenIds = new TokenIdsDefault()) = {
+  def write[T: Writes](t: T, output: OutputStream, ids: IdsWriter = new IdsWriterDefault()) = {
     val script = implicitly[Writes[T]].write(t)
     val writer = factory.writer(output)
     try {
@@ -28,7 +28,7 @@ class IO(val factory: ReaderWriterFactory) {
     }
   }
   
-  def writeRevision[T: Writes](r: Revision, t: T, output: OutputStream, ids: TokenIds = new TokenIdsDefault()) = {
+  def writeRevision[T: Writes](r: Revision, t: T, output: OutputStream, ids: IdsWriter = new IdsWriterDefault()) = {
     val script = implicitly[Writes[T]].write(t)
     val writer = factory.writer(output)
     try {

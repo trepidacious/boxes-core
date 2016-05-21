@@ -21,7 +21,7 @@ object BoxWriterScript {
    * @tparam A        The result type of the script
    * @return          (Script result, token writer after run, token ids after run)
    */
-  @tailrec final def run[A](script: BoxWriterScript[A], rev: Revision, writer: TokenWriter, ids: TokenIds): (A, TokenWriter, TokenIds) = script.resume match {
+  @tailrec final def run[A](script: BoxWriterScript[A], rev: Revision, writer: TokenWriter, ids: IdsWriter): (A, TokenWriter, IdsWriter) = script.resume match {
 
     case -\/(ReadBoxDeltaF(b, toNext)) =>
       val value = b.get(rev)

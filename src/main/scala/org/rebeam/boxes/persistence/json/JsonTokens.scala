@@ -453,14 +453,14 @@ class JsonReaderWriterFactory(pretty: Boolean = false) extends ReaderWriterFacto
 }
 
 class JsonIO(pretty: Boolean = false) extends IO(new JsonReaderWriterFactory(pretty)) {
-  def toJsonString[T: Writes](t: T, ids: TokenIds = new TokenIdsDefault()): String = {
+  def toJsonString[T: Writes](t: T, ids: IdsWriter = new IdsWriterDefault()): String = {
     val sw = new StringWriter()
     val w = new JsonTokenWriter(sw, pretty)
     Shelf.runWriter(Writing.write(t), w, ids)
     sw.toString
   }
 
-  def toJsonStringFromRevision[T: Writes](r: Revision, t: T, ids: TokenIds = new TokenIdsDefault()): String = {
+  def toJsonStringFromRevision[T: Writes](r: Revision, t: T, ids: IdsWriter = new IdsWriterDefault()): String = {
     val sw = new StringWriter()
     val w = new JsonTokenWriter(sw, pretty)
     BoxWriterScript.run(Writing.write(t), r, w, ids)

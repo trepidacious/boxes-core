@@ -1,6 +1,26 @@
 package org.rebeam.boxes.persistence
 
-trait TokenIds {
+/**
+ * Associates Long ids with arbitrary things. Should be assumed to assign
+ * the same id to all equal things.
+ * Currently may be mutable.
+ * TODO make guaranteed immutable
+ */
+trait Ids {
+  /**
+   * Find the id for a thing, if any
+   * @param thing The id to look up
+   * @return Some(id) if the thing has an id, None otherwise
+   */
+  def idFor(thing: Any): Option[Long]  
+}
+
+/**
+ * Ids with support for adding new things, for use alongside a TokenWriter
+ * in BoxWriterScripts.
+ * TODO replace with an immutable structure
+ */
+trait IdsWriter extends Ids {
   /**
    * Try to cache a thing. The result will tell us whether the thing
    * is already cached:
@@ -14,18 +34,13 @@ trait TokenIds {
    *   referenced by future refs.
    */
   def cache(thing: Any): CacheResult
-  
-  /**
-   * See if there is an id for a thing already
-   */
-  def idFor(thing: Any): Option[Long]
 }
 
 /**
- * Basic implementation of TokenIds using a mutable map
+ * Basic implementation of IdsWriter using a mutable map
  * to store mapping from things to ids.
  */ 
-class TokenIdsDefault extends TokenIds{
+class IdsWriterDefault extends IdsWriter {
 
  private val c = collection.mutable.Map[Any, Long]()
  private var nextId = 42
@@ -49,15 +64,15 @@ class TokenIdsDefault extends TokenIds{
 }
 
 /**
- * TokenIds implementation that will use an underlying TokenIds to
- * provide all actual ids. So this TokenIds will only contain the
- * things that have been cached with this actual TokenIds, but when
+ * IdsWriter implementation that will use an underlying IdsWriter to
+ * provide all actual ids. So this IdsWriter will only contain the
+ * things that have been cached with this actual IdsWriter, but when
  * a new thing is cached, it will also be cached in the underlying
- * TokenIds, and the id from the underlying TokenIds will be used.
+ * IdsWriter, and the id from the underlying IdsWriter will be used.
  * This can be used to provide persistent ids that survive across
  * multiple writer scripts etc.
  */
-class TokenIdsOverlay(t: TokenIds) extends TokenIds {
+class IdsWriterOverlay(t: IdsWriter) extends IdsWriter {
   
   private val c = collection.mutable.Map[Any, Long]()
   
@@ -81,7 +96,7 @@ class TokenIdsOverlay(t: TokenIds) extends TokenIds {
 /**
  * Use a WeakHashMap to remember ids
  */
-class TokenIdsWeak extends TokenIds{
+class IdsWriterWeak extends IdsWriter {
 
   private val c = collection.mutable.WeakHashMap[Any, Long]()
   private var nextId = 42
