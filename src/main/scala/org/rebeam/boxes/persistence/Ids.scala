@@ -1,5 +1,7 @@
 package org.rebeam.boxes.persistence
 
+import java.util.Random
+
 /**
  * Gives access to an association of Long ids with arbitrary things. 
  * Should be assumed to assign the same id to all equal things.
@@ -23,9 +25,9 @@ trait IdsWithContents extends Ids {
   def contents:collection.immutable.Map[Any, Long]
 }
 
-private class IdsMutable(private val c: collection.mutable.Map[Any, Long]) extends IdsWithContents {
+private class IdsMutable(private val c: collection.mutable.Map[Any, Long], private val firstId: Long) extends IdsWithContents {
 
- private var nextId = 42
+ private var nextId = firstId
  
  override def idFor(thing: Any): Long = c.get(thing) match {
   case None =>
@@ -46,7 +48,7 @@ private class IdsMutable(private val c: collection.mutable.Map[Any, Long]) exten
  * to store mapping from things to ids.
  */ 
 object IdsDefault{
-  def apply(): IdsWithContents = new IdsMutable(collection.mutable.Map[Any, Long]())
+  def apply(firstId: Long = 42): IdsWithContents = new IdsMutable(collection.mutable.Map[Any, Long](), firstId)
 }
 
 /**
@@ -54,5 +56,5 @@ object IdsDefault{
  * when they could otherwise be garbage collected.
  */
  object IdsWeak{
-   def apply(): IdsWithContents = new IdsMutable(collection.mutable.WeakHashMap[Any, Long]())
+   def apply(firstId: Long = 42): IdsWithContents = new IdsMutable(collection.mutable.WeakHashMap[Any, Long](), firstId)
  }

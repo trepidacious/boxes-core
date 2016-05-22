@@ -84,7 +84,7 @@ object NodeFormatsGen {
     s"""
       |  def nodeFormat$fieldCount[$fieldTypes, N <: Product, A <: Action[N]](construct: ($constructorParameters) => N, default: BoxScript[N])
       |      ($productNameParameters,
-      |      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: NoDuplicatesLinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = IdLinks) : Format[N] = new Format[N] {
+      |      readsAction: Option[Reads[A]] = None, nodeName: TokenName = NoName, boxLinkStrategy: LinkStrategy = IdLinks, nodeLinkStrategy: LinkStrategy = IdLinks) : Format[N] = new Format[N] {
       |
       |    def writeEntriesAndClose(n: N): BoxWriterScript[Unit] = {
       |      import BoxWriterDeltaF._
@@ -128,17 +128,19 @@ object NodeFormatsGen {
       |      $replaceFields
       |    } yield ()
       |
-      |    def modify(n: N, id: Long) = for {
-      |      isThisNode <- modifyNode(n, id, readsAction)
-      |      _ <- if (isThisNode) {
-      |        nothing   
-      |      } else {
-      |        for {
-      |          $modifyFields
-      |        } yield ()  
-      |      }
-      |    } yield ()
-      |
+      |    def modify(n: N, id: Long) = {
+      |      import BoxReaderDeltaF._    
+      |      for {
+      |        isThisNode <- modifyNode(n, id, readsAction)
+      |        _ <- if (isThisNode) {
+      |          nothing   
+      |        } else {
+      |          for {
+      |            $modifyFields
+      |          } yield ()  
+      |        }
+      |      } yield ()
+      |    }
       |  }
     """.stripMargin
   }

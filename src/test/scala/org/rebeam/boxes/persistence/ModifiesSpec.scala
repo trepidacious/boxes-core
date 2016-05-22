@@ -24,6 +24,8 @@ import Scalaz._
 
 import PersistenceSpecUtils._
 
+import java.util.Random
+
 class ModifiesSpec extends WordSpec with PropertyChecks with ShouldMatchers {
 
   case class NameAndList(name: Box[String], list: Box[List[String]]) {
@@ -42,10 +44,26 @@ class ModifiesSpec extends WordSpec with PropertyChecks with ShouldMatchers {
     } yield ()
   }
 
-  def modify[M, A](model: M, action: A, boxId: Long)(implicit formatA: Format[A], formatM: Format[M]): Unit = {
-    val readerOfAction = BufferIO.toReader(action)
-    val modifyScript = formatM.modify(model, boxId)
-    Shelf.runReader(modifyScript, readerOfAction)
+  def modify[M, A](model: M, action: A, toModify: Any)(implicit formatA: Format[A], formatM: Format[M]): Unit = {
+    
+    //Make tokens representing the action, ids are irrelevant here
+    val readerOfAction = BufferIO.toReader(action, IdsDefault(new Random().nextLong()))
+    
+    //We make one ids instance so we have persistent ids for the replace to
+    //operate on. Randomise first id
+    val ids = IdsDefault(new Random().nextLong())
+    
+    //Now we need to write out the model once to gather the ids
+    BufferIO.toTokens(model, ids)
+    
+    //We want the id for the object we're setting, in the persistent ids
+    val id = ids.idFor(toModify)
+
+    //Use the format to create a modify  script
+    val modifyScript = formatM.modify(model, id)
+    
+    //Now note we use the same ids again so we can find the right box
+    Shelf.runReader(modifyScript, readerOfAction, ids)
   }
 
   //Make a format for our action
@@ -66,11 +84,11 @@ class ModifiesSpec extends WordSpec with PropertyChecks with ShouldMatchers {
 
       //Modify and check results.
       //Note we only need to pass the id of some box in nal to modify nal.
-      modify(nal, action, nal.list.id)
+      modify(nal, action, nal)
       atomic { nal.list() } shouldBe List("i", "a", "b")
 
       //And again
-      modify(nal, action, nal.list.id)
+      modify(nal, action, nal)
       atomic { nal.list() } shouldBe List("i", "a", "b", "a", "b")      
     }
 
@@ -91,14 +109,14 @@ class ModifiesSpec extends WordSpec with PropertyChecks with ShouldMatchers {
 
       //Modify and check results.
       //Note we only need to pass the id of some box in nal to modify nal.
-      modify(listOfNal, action, nal.list.id)
+      modify(listOfNal, action, nal)
       atomic { nal.list() } shouldBe List("i", "a", "b")
       atomic { nal2.list() } shouldBe List("j")
       atomic { nal3.list() } shouldBe List("k")
       atomic { nal4.list() } shouldBe List("l")
 
       //And again
-      modify(listOfNal, action, nal.list.id)
+      modify(listOfNal, action, nal)
       atomic { nal.list() } shouldBe List("i", "a", "b", "a", "b")      
       atomic { nal2.list() } shouldBe List("j")
       atomic { nal3.list() } shouldBe List("k")
@@ -124,14 +142,14 @@ class ModifiesSpec extends WordSpec with PropertyChecks with ShouldMatchers {
 
       //Modify and check results.
       //Note we only need to pass the id of some box in nal to modify nal.
-      modify(listOfNal, action, nal.list.id)
+      modify(listOfNal, action, nal)
       atomic { nal.list() } shouldBe List("i", "a", "b")
       atomic { nal2.list() } shouldBe List("j")
       atomic { nal3.list() } shouldBe List("k")
       atomic { nal4.list() } shouldBe List("l")
 
       //And again
-      modify(listOfNal, action, nal.list.id)
+      modify(listOfNal, action, nal)
       atomic { nal.list() } shouldBe List("i", "a", "b", "a", "b")      
       atomic { nal2.list() } shouldBe List("j")
       atomic { nal3.list() } shouldBe List("k")

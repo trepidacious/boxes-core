@@ -30,7 +30,7 @@ scalacOptions ++= Seq(
   "-Xlint"
 )
 
-testOptions in Test += Tests.Argument("-oDF")
+// testOptions in Test += Tests.Argument("-oDF")
 
 //Run tests in sequence since they use Shelf operations that should not be interleaved.
 parallelExecution in Test := false

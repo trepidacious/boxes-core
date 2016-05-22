@@ -19,6 +19,8 @@ import BoxTypes._
 import BoxUtils._
 import BoxScriptImports._
 
+import java.util.Random
+
 import scalaz._
 import Scalaz._
 
@@ -29,9 +31,26 @@ class ReplacesSpec extends WordSpec with PropertyChecks with ShouldMatchers {
   def replaceAndTest[T, M](model: M, newValue: T, box: Box[T])(implicit formatT: Format[T], formatM: Format[M]): Unit = {
     //Check that box does not already have new value
     atomic { box() } should not be newValue
-    val readerOfNewValue = BufferIO.toReader(newValue)
-    val replaceScript = formatM.replace(model, box.id)
-    Shelf.runReader(replaceScript, readerOfNewValue)
+
+    //Make tokens representing the new value, ids are irrelevant here
+    val readerOfNewValue = BufferIO.toReader(newValue, IdsDefault(new Random().nextLong()))
+
+    //We make one ids instance so we have persistent ids for the replace to
+    //operate on. Randomise first id
+    val ids = IdsDefault(new Random().nextLong())
+    
+    //Now we need to write out the model once to gather the ids
+    BufferIO.toTokens(model, ids)
+    
+    //We want the id for the box we're setting, in the persistent ids
+    val boxId = ids.idFor(box)
+    
+    //Use the format to create a replace script
+    val replaceScript = formatM.replace(model, boxId)
+    
+    //Now note we use the same ids again so we can find the right box
+    Shelf.runReader(replaceScript, readerOfNewValue, ids)
+    
     atomic { box() } shouldBe newValue
   }
 
@@ -57,24 +76,24 @@ class ReplacesSpec extends WordSpec with PropertyChecks with ShouldMatchers {
       replaceAndTest(boxes, "b", boxes(0))
       replaceAndTest(boxes, "b", boxes(1))
     }
-
+    
     "set string box in a list with duplicate boxes" in {
       val boxA = atomic { create("a") }
       val model: List[Box[String]] = List(boxA, boxA)
       replaceAndTest(model, "b", boxA)
     }
-
+    
     "set string box in a set" in {
       val boxes = atomic { List("1", "2", "3", "4") traverseU (create(_)) }.toSet
       replaceAndTest(boxes, "b", boxes.head)
     }
-
+    
     "set string box in a map" in {
       val boxes = atomic { List("1", "2", "3", "4") traverseU (create(_)) }
       val map = Map(0 -> boxes(0), 1 -> boxes(1), 2 -> boxes(2), 3 -> boxes(3))
       replaceAndTest(boxes, "b", boxes(0))
     }
-
+    
     "set string box in a map with duplicate entries" in {
       val boxes = atomic { List("1", "2", "3", "4") traverseU (create(_)) }
       val map = Map(0 -> boxes(0), 1 -> boxes(0), 2 -> boxes(0), 3 -> boxes(0))
@@ -83,19 +102,19 @@ class ReplacesSpec extends WordSpec with PropertyChecks with ShouldMatchers {
       atomic { boxes(2) } shouldBe "3"
       atomic { boxes(3) } shouldBe "4"
     }
-
+    
     "set string box in an option" in {
       val boxA = atomic { create("a") }
       val model: List[Option[Box[String]]] = List(None, Some(boxA), Some(boxA))
       replaceAndTest(model, "b", boxA)
     }
-
+    
     "set string box in a Person (Node2)" in {
       implicit val personFormat = nodeFormat2(Person.apply, Person.default)("name", "age")      
       val p = atomic { Person.default("a", 40) }
       replaceAndTest(p, "b", p.name)
     }
-
+    
     "set string box in a case class containing Person" in {
       implicit val personFormat = nodeFormat2(Person.apply, Person.default)("name", "age")      
       

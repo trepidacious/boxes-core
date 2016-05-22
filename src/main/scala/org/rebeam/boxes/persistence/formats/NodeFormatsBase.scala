@@ -136,42 +136,11 @@ class NodeFormatsBase {
     import BoxReaderDeltaF._
 
     val box = n.productElement(index).asInstanceOf[Box[T]]
-
-    //FIXME in nodeFormatsN instances, first call something like first part of this function
-    //to handle case that id matches node, then if NOT, call something like second part
-    //on each field so we can recurse through boxes
-
-    //If this node matches id and we have a readsAction, use it to read an action
-    //from tokens and then perform that action on the node
+    
+    //Recurse to box contents
     for {
-      nodeId <- getId(n)
-      _ <- if (nodeId == id) {
-        readsAction.map (r => {
-          for {
-            token <- peek
-            
-            //If we are out of tokens, action has already been performed,
-            //so do nothing
-            _ <- if (token == EndToken) {
-              nothing
-              
-            //If we have tokens, read the action and perform it on the node
-            } else {
-              for {
-                action <- r.read
-                _ <- embedBoxScript(action.act(n))
-              } yield ()
-            }
-          } yield ()
-        }).getOrElse(nothing)
-        
-      //If we are not the identified node, recurse to boxes contents
-      } else {
-        for {
-          t <- get(box)
-          _ <- f.modify(t, id)
-        } yield ()
-      }
+        t <- get(box)
+        _ <- f.modify(t, id)
     } yield ()    
   }
 }

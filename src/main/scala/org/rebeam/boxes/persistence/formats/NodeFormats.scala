@@ -86,10 +86,19 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P1](n, 0, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -142,11 +151,20 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P2](n, 1, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -202,12 +220,21 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P3](n, 2, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -266,13 +293,22 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P4](n, 3, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -334,14 +370,23 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P5](n, 4, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -406,15 +451,24 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P6](n, 5, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -482,16 +536,25 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P7](n, 6, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -562,17 +625,26 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P8](n, 7, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -646,18 +718,27 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P9](n, 8, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -734,19 +815,28 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P10](n, 9, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -826,20 +916,29 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P11](n, 10, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
-      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, id, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -922,21 +1021,30 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P12](n, 11, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
-      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
-      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, id, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, id, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -1022,22 +1130,31 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P13](n, 12, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
-      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
-      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
-      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, id, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, id, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, id, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -1126,23 +1243,32 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P14](n, 13, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
-      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
-      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
-      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
-      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, id, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, id, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, id, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, id, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -1234,24 +1360,33 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P15](n, 14, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
-      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
-      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
-      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
-      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
-      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, id, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, id, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, id, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, id, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, id, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -1346,25 +1481,34 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P16](n, 15, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
-      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
-      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
-      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
-      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
-      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
-      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, id, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, id, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, id, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, id, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, id, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, id, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -1462,26 +1606,35 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P17](n, 16, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
-      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
-      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
-      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
-      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
-      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
-      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
-      _ <- modifyField[P17, N, A](n, 16, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, id, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, id, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, id, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, id, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, id, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, id, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, id, readsAction)
+      _ <- modifyField[P17, N, A](n, 16, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -1582,27 +1735,36 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P18](n, 17, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
-      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
-      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
-      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
-      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
-      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
-      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
-      _ <- modifyField[P17, N, A](n, 16, boxId, readsAction)
-      _ <- modifyField[P18, N, A](n, 17, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, id, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, id, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, id, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, id, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, id, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, id, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, id, readsAction)
+      _ <- modifyField[P17, N, A](n, 16, id, readsAction)
+      _ <- modifyField[P18, N, A](n, 17, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -1706,28 +1868,37 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P19](n, 18, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
-      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
-      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
-      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
-      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
-      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
-      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
-      _ <- modifyField[P17, N, A](n, 16, boxId, readsAction)
-      _ <- modifyField[P18, N, A](n, 17, boxId, readsAction)
-      _ <- modifyField[P19, N, A](n, 18, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, id, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, id, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, id, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, id, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, id, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, id, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, id, readsAction)
+      _ <- modifyField[P17, N, A](n, 16, id, readsAction)
+      _ <- modifyField[P18, N, A](n, 17, id, readsAction)
+      _ <- modifyField[P19, N, A](n, 18, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -1834,29 +2005,38 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P20](n, 19, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
-      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
-      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
-      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
-      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
-      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
-      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
-      _ <- modifyField[P17, N, A](n, 16, boxId, readsAction)
-      _ <- modifyField[P18, N, A](n, 17, boxId, readsAction)
-      _ <- modifyField[P19, N, A](n, 18, boxId, readsAction)
-      _ <- modifyField[P20, N, A](n, 19, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, id, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, id, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, id, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, id, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, id, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, id, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, id, readsAction)
+      _ <- modifyField[P17, N, A](n, 16, id, readsAction)
+      _ <- modifyField[P18, N, A](n, 17, id, readsAction)
+      _ <- modifyField[P19, N, A](n, 18, id, readsAction)
+      _ <- modifyField[P20, N, A](n, 19, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -1966,30 +2146,39 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P21](n, 20, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
-      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
-      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
-      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
-      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
-      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
-      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
-      _ <- modifyField[P17, N, A](n, 16, boxId, readsAction)
-      _ <- modifyField[P18, N, A](n, 17, boxId, readsAction)
-      _ <- modifyField[P19, N, A](n, 18, boxId, readsAction)
-      _ <- modifyField[P20, N, A](n, 19, boxId, readsAction)
-      _ <- modifyField[P21, N, A](n, 20, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, id, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, id, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, id, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, id, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, id, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, id, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, id, readsAction)
+      _ <- modifyField[P17, N, A](n, 16, id, readsAction)
+      _ <- modifyField[P18, N, A](n, 17, id, readsAction)
+      _ <- modifyField[P19, N, A](n, 18, id, readsAction)
+      _ <- modifyField[P20, N, A](n, 19, id, readsAction)
+      _ <- modifyField[P21, N, A](n, 20, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 
@@ -2102,31 +2291,40 @@ object NodeFormats extends NodeFormatsBase {
       _ <- replaceField[P22](n, 21, boxId)
     } yield ()
 
-    def modify(n: N, boxId: Long) = for {
-      _ <- modifyField[P1, N, A](n, 0, boxId, readsAction)
-      _ <- modifyField[P2, N, A](n, 1, boxId, readsAction)
-      _ <- modifyField[P3, N, A](n, 2, boxId, readsAction)
-      _ <- modifyField[P4, N, A](n, 3, boxId, readsAction)
-      _ <- modifyField[P5, N, A](n, 4, boxId, readsAction)
-      _ <- modifyField[P6, N, A](n, 5, boxId, readsAction)
-      _ <- modifyField[P7, N, A](n, 6, boxId, readsAction)
-      _ <- modifyField[P8, N, A](n, 7, boxId, readsAction)
-      _ <- modifyField[P9, N, A](n, 8, boxId, readsAction)
-      _ <- modifyField[P10, N, A](n, 9, boxId, readsAction)
-      _ <- modifyField[P11, N, A](n, 10, boxId, readsAction)
-      _ <- modifyField[P12, N, A](n, 11, boxId, readsAction)
-      _ <- modifyField[P13, N, A](n, 12, boxId, readsAction)
-      _ <- modifyField[P14, N, A](n, 13, boxId, readsAction)
-      _ <- modifyField[P15, N, A](n, 14, boxId, readsAction)
-      _ <- modifyField[P16, N, A](n, 15, boxId, readsAction)
-      _ <- modifyField[P17, N, A](n, 16, boxId, readsAction)
-      _ <- modifyField[P18, N, A](n, 17, boxId, readsAction)
-      _ <- modifyField[P19, N, A](n, 18, boxId, readsAction)
-      _ <- modifyField[P20, N, A](n, 19, boxId, readsAction)
-      _ <- modifyField[P21, N, A](n, 20, boxId, readsAction)
-      _ <- modifyField[P22, N, A](n, 21, boxId, readsAction)
-    } yield ()
-
+    def modify(n: N, id: Long) = {
+      import BoxReaderDeltaF._    
+      for {
+        isThisNode <- modifyNode(n, id, readsAction)
+        _ <- if (isThisNode) {
+          nothing   
+        } else {
+          for {
+            _ <- modifyField[P1, N, A](n, 0, id, readsAction)
+      _ <- modifyField[P2, N, A](n, 1, id, readsAction)
+      _ <- modifyField[P3, N, A](n, 2, id, readsAction)
+      _ <- modifyField[P4, N, A](n, 3, id, readsAction)
+      _ <- modifyField[P5, N, A](n, 4, id, readsAction)
+      _ <- modifyField[P6, N, A](n, 5, id, readsAction)
+      _ <- modifyField[P7, N, A](n, 6, id, readsAction)
+      _ <- modifyField[P8, N, A](n, 7, id, readsAction)
+      _ <- modifyField[P9, N, A](n, 8, id, readsAction)
+      _ <- modifyField[P10, N, A](n, 9, id, readsAction)
+      _ <- modifyField[P11, N, A](n, 10, id, readsAction)
+      _ <- modifyField[P12, N, A](n, 11, id, readsAction)
+      _ <- modifyField[P13, N, A](n, 12, id, readsAction)
+      _ <- modifyField[P14, N, A](n, 13, id, readsAction)
+      _ <- modifyField[P15, N, A](n, 14, id, readsAction)
+      _ <- modifyField[P16, N, A](n, 15, id, readsAction)
+      _ <- modifyField[P17, N, A](n, 16, id, readsAction)
+      _ <- modifyField[P18, N, A](n, 17, id, readsAction)
+      _ <- modifyField[P19, N, A](n, 18, id, readsAction)
+      _ <- modifyField[P20, N, A](n, 19, id, readsAction)
+      _ <- modifyField[P21, N, A](n, 20, id, readsAction)
+      _ <- modifyField[P22, N, A](n, 21, id, readsAction)
+          } yield ()  
+        }
+      } yield ()
+    }
   }
     
 }

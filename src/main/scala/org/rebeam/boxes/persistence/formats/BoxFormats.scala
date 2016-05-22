@@ -30,7 +30,7 @@ private class BoxFormat[T](linkStrategy: LinkStrategy)(implicit format: Format[T
           b <- create(v)
         } yield b
 
-      case _ => throw new IncorrectTokenException("Expected BoxToken at start of Box[_]")
+      case x => throw new IncorrectTokenException("Expected BoxToken at start of Box[_], got " + x)
     }
   }
   

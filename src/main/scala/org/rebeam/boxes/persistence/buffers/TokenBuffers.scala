@@ -41,7 +41,7 @@ object BufferIO {
     w.tokens
   }
 
-  def toReader[T: Writes](t: T) = BufferTokenReader(toTokens(t))
+  def toReader[T: Writes](t: T, ids: Ids = IdsDefault()) = BufferTokenReader(toTokens(t, ids))
 
   def fromTokens[T: Reads](tokens: List[Token]): T = {
     val r = BufferTokenReader(tokens)
