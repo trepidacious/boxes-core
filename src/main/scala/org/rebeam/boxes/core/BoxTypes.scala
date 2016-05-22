@@ -8,7 +8,7 @@ object BoxTypes {
   implicit val boxDeltaFunctor = BoxDeltaF.functor
 
   //Currently just an alias for BoxScript, but in future should be a script that is
-  //known only to read (e.g. with we have compositional scripts)
+  //known only to read (e.g. when we have compositional scripts)
 
   /**
    * A script that will read a value from box state.
