@@ -100,6 +100,38 @@ class NodeFormatsBase {
     
   }
 
+  protected def modifyNode[N <: Product, A <: Action[N]](n: N, id: Long, readsAction: Option[Reads[A]]): BoxReaderScript[Boolean] = {
+    import BoxReaderDeltaF._
+    for {
+      nodeId <- getId(n)
+      _ <- if (nodeId == id) {
+        readsAction.map (r => {
+          for {
+            token <- peek
+            
+            //If we are out of tokens, action has already been performed,
+            //so do nothing
+            _ <- if (token == EndToken) {
+              nothing
+              
+            //If we have tokens, read the action and perform it on the node
+            } else {
+              for {
+                action <- r.read
+                _ <- embedBoxScript(action.act(n))
+              } yield ()
+            }
+          } yield ()
+        }).getOrElse(nothing)
+        
+      //If we are not the identified node, recurse to boxes contents
+      } else {
+        nothing
+      }
+    } yield (nodeId == id)    
+
+  }
+
   protected def modifyField[T, N <: Product, A <: Action[N]](n: N, index: Int, id: Long, readsAction: Option[Reads[A]])(implicit f: Format[T]) = {
     import BoxReaderDeltaF._
 

@@ -77,7 +77,7 @@ object NodeFormatsGen {
 
     val replaceFields =         format(i => s"_ <- replaceField[P$i](n, ${i - 1}, boxId)", "\n      ")
 
-    val modifyFields =          format(i => s"_ <- modifyField[P$i, N, A](n, ${i - 1}, boxId, readsAction)", "\n      ")
+    val modifyFields =          format(i => s"_ <- modifyField[P$i, N, A](n, ${i - 1}, id, readsAction)", "\n      ")
 
     val useDictEntriesCases =   format(i => s"case s if s == name$i => useDictEntry[P$i](n, ${i - 1}, link)", "\n              ")
 
@@ -128,8 +128,15 @@ object NodeFormatsGen {
       |      $replaceFields
       |    } yield ()
       |
-      |    def modify(n: N, boxId: Long) = for {
-      |      $modifyFields
+      |    def modify(n: N, id: Long) = for {
+      |      isThisNode <- modifyNode(n, id, readsAction)
+      |      _ <- if (isThisNode) {
+      |        nothing   
+      |      } else {
+      |        for {
+      |          $modifyFields
+      |        } yield ()  
+      |      }
       |    } yield ()
       |
       |  }
