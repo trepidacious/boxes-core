@@ -8,16 +8,6 @@ trait TokenReader {
 
   def pull(): Token
 
-  private val cache = new scala.collection.mutable.HashMap[Long, Any]()
-
-  def putCache(id: Long, thing: Any) = cache.put(id, thing) match {
-   case Some(existingThing) => throw new CacheException("Already have a thing " + existingThing + " for id " + id)
-   case _ =>
-  }
-
-  private def getCacheOption(id: Long) = cache.get(id)
-  def getCache(id: Long) = getCacheOption(id).getOrElse(throw new CacheException("No cached thing for id " + id))
-
   @throws [IncorrectTokenException]
   def pullAndAssertEquals(t:Token) {
    val p = pull()

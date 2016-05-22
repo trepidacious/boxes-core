@@ -70,9 +70,6 @@ case class PullBigIntF[Next](toNext: BigInt => Next) extends BoxReaderDeltaF[Nex
 case class PullBigDecimalF[Next](toNext: BigDecimal => Next) extends BoxReaderDeltaF[Next]
 case class PullStringF[Next](toNext: String => Next) extends BoxReaderDeltaF[Next]
 
-case class GetCachedF[Next](id: Long, toNext: Any => Next) extends BoxReaderDeltaF[Next]
-case class PutCachedF[Next](id: Long, thing: Any, next: Next) extends BoxReaderDeltaF[Next]
-
 //FIXME note this is possibly not necessary in the long term, however it's fairly easy to implement, 
 //and allows for use cases like Node reading, where we want to run a BoxScript to build a default instance
 //within a BoxReaderScript. We could use a BoxReaderScript for the default, but then we can't use it in normal
@@ -167,10 +164,6 @@ object BoxReaderDeltaF {
       case PullBigDecimalF(toNext) => PullBigDecimalF(toNext andThen f)
       case PullStringF(toNext) => PullStringF(toNext andThen f)
 
-      case PutCachedF(id, thing, next) => PutCachedF(id, thing, f(next))
-
-      case GetCachedF(id, toNext) => GetCachedF(id, toNext andThen f)
-
       case EmbedBoxScript(script, toNext) => EmbedBoxScript(script, toNext andThen f)
 
       case RevisionIndexF(toNext) => RevisionIndexF(toNext andThen f)
@@ -236,11 +229,6 @@ object BoxReaderDeltaF {
     case actual if filter(actual) => actual
     case actual => throw new IncorrectTokenException("Got token " + actual + ", not " + message)
   }
-
-  def getCached(id: Long): BoxReaderScript[Any]
-    = liftF(GetCachedF(id, identity[Any]): BoxReaderDeltaF[Any])(boxReaderDeltaFunctor)
-  def putCached(id: Long, thing: Any): BoxReaderScript[Unit]
-    = liftF(PutCachedF(id, thing, ()): BoxReaderDeltaF[Unit])(boxReaderDeltaFunctor)
 
   def embedBoxScript[T](script: BoxScript[T]): BoxReaderScript[T]
     = liftF(EmbedBoxScript(script, identity[T]))(boxReaderDeltaFunctor)
