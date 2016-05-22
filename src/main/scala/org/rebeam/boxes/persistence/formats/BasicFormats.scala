@@ -31,13 +31,10 @@ object BasicFormats {
       case None => nothing
     }
 
-    def modify(option: Option[T], boxId: Long): BoxReaderScript[Unit] = option match {
-      case Some(v) => format.modify(v, boxId)
+    def modify(option: Option[T], id: Long): BoxReaderScript[Unit] = option match {
+      case Some(v) => format.modify(v, id)
       case None => nothing
     }
-
-    //No modifications for Box[Option[T]] - use replace.
-    def modifyBox(b: Box[Option[T]]): BoxReaderScript[Unit] = nothing
 
   }
 
@@ -57,8 +54,7 @@ object BasicFormats {
     def write(t: T) = delegate.write(t)
     def read = delegate.read
     def replace(t: T, boxId: Long) = delegate.replace(t, boxId)
-    def modify(t: T, boxId: Long) = delegate.modify(t, boxId)
-    // def modifyBox(b: Box[T]) = delegate.modifyBox(b)
+    def modify(t: T, id: Long) = delegate.modify(t, id)
   }
 
 }

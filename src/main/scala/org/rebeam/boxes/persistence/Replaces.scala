@@ -18,9 +18,10 @@ import Scalaz._
 trait Replaces[-T] {
   /**
    * Inspect an object of type T, and if it "contains" the Box with specified
-   * boxId, return a script that will attempt to replace the contents of that
-   * Box with the content read from available tokens, unless the next available
-   * token is EndToken, in which case the script may immediately return Unit.
+   * id (retrieved using getId), return a script that will attempt to replace 
+   * the contents of that Box with the content read from available tokens, 
+   * unless the next available token is EndToken, in which case the script may 
+   * immediately return Unit.
    * This handling of EndToken allows us to provide the script
    * with tokens representing exactly one instance of T, so that the contents of
    * the Box will be replaced exactly once, using up the tokens and resulting
@@ -28,7 +29,7 @@ trait Replaces[-T] {
    * found elsewhere in the object graph, and resulting in early return from the
    * script if possible.
    *
-   * If object does NOT contain the Box with specified boxId, recursively
+   * If object does NOT contain the Box with specified id, recursively
    * call appropriate Replace typeclass on all objects accessible from the object,
    * until it is found.
    *
@@ -38,7 +39,7 @@ trait Replaces[-T] {
    * Unit.
    *
    * @param t      The object in which to replace
-   * @param boxId  The id of the Box to be replaced
+   * @param boxId  The id of the Box to be replaced (as found using getId)
    * @return       A script to replace box contents from read tokens
    */
   def replace(t: T, boxId: Long): BoxReaderScript[Unit]

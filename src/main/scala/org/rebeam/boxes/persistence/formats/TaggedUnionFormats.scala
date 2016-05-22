@@ -18,7 +18,7 @@ object TaggedUnionFormats {
   case class Tagged[+T](tag: String, t: T)(implicit f: Format[T]) {
     val write = f.write(t)
     def replace(boxId: Long) = f.replace(t, boxId)
-    def modify(boxId: Long) = f.modify(t, boxId)
+    def modify(id: Long) = f.modify(t, id)
   }
   
   /**
@@ -44,7 +44,7 @@ object TaggedUnionFormats {
     }
 
     def replace(t: T, boxId: Long) = w(t).replace(boxId)
-    def modify(t: T, boxId: Long) = w(t).modify(boxId)
+    def modify(t: T, id: Long) = w(t).modify(id)
     
     def read: BoxReaderScript[T] = {
       import BoxReaderDeltaF._

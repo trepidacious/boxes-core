@@ -56,12 +56,12 @@ object Shelf {
 
   def atomicToRevision(s: BoxScript[Unit]): Revision = runRepeated(s)._1
 
-  def runReader[A](s: BoxReaderScript[A], reader: TokenReader): Option[(Revision, A)] = {
+  def runReader[A](s: BoxReaderScript[A], reader: TokenReader, ids: Ids = IdsDefault()): Option[(Revision, A)] = {
     val baseRevision = currentRevision
 
     val baseRad = RevisionAndDeltas(baseRevision, BoxDeltas.empty)
 
-    val (finalRad, result, _, _) = BoxReaderScript.run(s, baseRad, BoxDeltas.empty, reader)
+    val (finalRad, result, _, _, _) = BoxReaderScript.run(s, baseRad, BoxDeltas.empty, reader, ids)
 
     commit(RevisionAndDeltas(baseRevision, finalRad.deltas)).map((_, result))    
   }

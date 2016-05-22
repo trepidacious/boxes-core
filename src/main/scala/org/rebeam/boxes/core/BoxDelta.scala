@@ -81,7 +81,7 @@ case class EmbedBoxScript[Next, T](script: BoxScript[T], toNext: T => Next) exte
 //Cases only usable for persistence - writer (Box -> Tokens)
 case class PutTokenF[Next](t: Token, next: Next) extends BoxWriterDeltaF[Next]
 
-case class GetIdF[Next](t: Any, toNext: Long => Next) extends BoxWriterDeltaF[Next]
+case class GetIdF[Next](t: Any, toNext: Long => Next) extends BoxWriterDeltaF[Next] with BoxReaderDeltaF[Next]
 
 object BoxDeltaF {
   val functor: Functor[BoxDeltaF] = new Functor[BoxDeltaF] {
@@ -167,6 +167,8 @@ object BoxReaderDeltaF {
       case EmbedBoxScript(script, toNext) => EmbedBoxScript(script, toNext andThen f)
 
       case RevisionIndexF(toNext) => RevisionIndexF(toNext andThen f)
+      
+      case GetIdF(t, toNext) => GetIdF(t, toNext andThen f)
     }
   }
 
@@ -232,6 +234,10 @@ object BoxReaderDeltaF {
 
   def embedBoxScript[T](script: BoxScript[T]): BoxReaderScript[T]
     = liftF(EmbedBoxScript(script, identity[T]))(boxReaderDeltaFunctor)
+    
+  def getId(thing: Any): BoxReaderScript[Long]
+    = liftF(GetIdF(thing, identity[Long]): BoxReaderDeltaF[Long])(boxReaderDeltaFunctor)
+
 }
 
 object BoxWriterDeltaF {

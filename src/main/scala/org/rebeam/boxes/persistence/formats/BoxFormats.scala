@@ -38,49 +38,42 @@ private class BoxFormat[T](linkStrategy: LinkStrategy)(implicit format: Format[T
     import BoxReaderDeltaF._
     //If this is our box, read a new value for it from tokens, set that new 
     //value and we are done
-    if (box.id == boxId) {
-      for {
-        t <- peek
-        //If we have some data to read, read it and use values
-        _ <- if (t != EndToken) {
-          for {
-            newT <- format.read
-            _ <- set(box, newT)
-          } yield ()
-          
-        //There is no data left, so nothing to do - just return immediately
-        } else {
-          nothing            
-        }
-      } yield ()
-      
-    //If this is not our box, recurse to its contents
-    } else {
-      for {
-        t <- get(box)
-        _ <- format.replace(t, boxId)
-      } yield ()
-    }
+    for {
+      id <- getId(box)
+      _ <- if (id == boxId) {
+        for {
+          t <- peek
+          //If we have some data to read, read it and use values
+          _ <- if (t != EndToken) {
+            for {
+              newT <- format.read
+              _ <- set(box, newT)
+            } yield ()
+            
+          //There is no data left, so nothing to do - just return immediately
+          } else {
+            nothing            
+          }
+        } yield ()
+        
+      //If this is not our box, recurse to its contents
+      } else {
+        for {
+          t <- get(box)
+          _ <- format.replace(t, boxId)
+        } yield ()
+      }
+    } yield ()
   }
-
-  override def modify(box: Box[T], boxId: Long) = {
+  
+  //We don't support modification of the box itself, so just go to contents
+  override def modify(box: Box[T], id: Long) = {
     import BoxReaderDeltaF._
-    // //If this is our box, delegate to modifyBox based on its type
-    // if (box.id == boxId) {
-    //   format.modifyBox(box)
-    // 
-    // //If this is not our box, recurse to its contents
-    // } else {
-      for {
-        t <- get(box)
-        _ <- format.modify(t, boxId)
-      } yield ()
-    // }
+    for {
+      t <- get(box)
+      _ <- format.modify(t, id)
+    } yield ()
   }
-
-  //No modification for a Box[Box[T]] - firstly, probably don't use this type,
-  //secondly, just use replace if you have to change contents
-  // override def modifyBox(b: Box[Box[T]]): BoxReaderScript[Unit] = BoxReaderDeltaF.nothing
 
 }
 

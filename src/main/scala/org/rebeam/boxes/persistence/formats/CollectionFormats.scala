@@ -38,17 +38,14 @@ trait LowPriorityCollectionFormats {
       _ <- map.toList traverseU (e => replaceEntry(e, boxId))
     } yield ()
 
-    def modifyEntry(entry: (K, V), boxId: Long): BoxReaderScript[Unit] = for {
-      _ <- formatK.modify(entry._1, boxId)
-      _ <- formatV.modify(entry._2, boxId)
+    def modifyEntry(entry: (K, V), id: Long): BoxReaderScript[Unit] = for {
+      _ <- formatK.modify(entry._1, id)
+      _ <- formatV.modify(entry._2, id)
     } yield ()
 
-    def modify(map: Map[K, V], boxId: Long): BoxReaderScript[Unit] = for {
-      _ <- map.toList traverseU (e => modifyEntry(e, boxId))
+    def modify(map: Map[K, V], id: Long): BoxReaderScript[Unit] = for {
+      _ <- map.toList traverseU (e => modifyEntry(e, id))
     } yield ()
-
-    //TODO we could probably have a sensible set of actions here, e.g. clear, put etc.
-    def modifyBox(box: Box[Map[K, V]]) = nothing
 
     //Writes
 
@@ -145,12 +142,9 @@ object CollectionFormats extends LowPriorityCollectionFormats {
       _ <- list traverseU (format.replace(_, boxId))
     } yield ()
 
-    override def modify(list: List[T], boxId: Long) = for {
-      _ <- list traverseU (format.modify(_, boxId))
+    override def modify(list: List[T], id: Long) = for {
+      _ <- list traverseU (format.modify(_, id))
     } yield ()
-
-    //TODO we could probably provide a reasonable set of actions here, e.g. clear, add etc.
-    // override def modifyBox(box: Box[List[T]]) = nothing
 
   }
 
@@ -188,12 +182,9 @@ object CollectionFormats extends LowPriorityCollectionFormats {
       _ <- set.toList traverseU (format.replace(_, boxId))
     } yield ()
 
-    override def modify(set: Set[T], boxId: Long) = for {
-      _ <- set.toList traverseU (format.modify(_, boxId))
+    override def modify(set: Set[T], id: Long) = for {
+      _ <- set.toList traverseU (format.modify(_, id))
     } yield ()
-
-    //TODO we could probably provide a reasonable set of actions here, e.g. clear, add etc.
-    // override def modifyBox(box: Box[Set[T]]) = nothing
 
   }
 
@@ -249,16 +240,13 @@ object CollectionFormats extends LowPriorityCollectionFormats {
       _ <- map.toList traverseU (e => replaceEntry(e, boxId))
     } yield ()
 
-    private def modifyEntry(entry: (String, V), boxId: Long): BoxReaderScript[Unit] = for {
-      _ <- formatV.modify(entry._2, boxId)
+    private def modifyEntry(entry: (String, V), id: Long): BoxReaderScript[Unit] = for {
+      _ <- formatV.modify(entry._2, id)
     } yield ()
 
-    def modify(map: Map[String, V], boxId: Long): BoxReaderScript[Unit] = for {
-      _ <- map.toList traverseU (e => modifyEntry(e, boxId))
+    def modify(map: Map[String, V], id: Long): BoxReaderScript[Unit] = for {
+      _ <- map.toList traverseU (e => modifyEntry(e, id))
     } yield ()
-
-    //TODO we could probably provide a sensible set of actions here, e.g. clear, put etc.
-    def modifyBox(box: Box[Map[String, V]]) = nothing
 
   }
 

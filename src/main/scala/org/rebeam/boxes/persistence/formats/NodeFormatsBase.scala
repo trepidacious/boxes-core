@@ -71,64 +71,75 @@ class NodeFormatsBase {
   
     //If this is our box, read a new value for it from tokens, set that new 
     //value and we are done
-    if (box.id == boxId) {
-      for {
-        t <- peek
-        //If we have some data to read, read it and use values
-        _ <- if (t != EndToken) {
-          for {
-            newT <- f.read
-            _ <- set(box, newT)
-          } yield ()
-          
-        //There is no data left, so nothing to do - just return immediately
-        } else {
-          nothing            
-        }
-      } yield ()
-      
-    //If this is not our box, recurse to its contents
-    } else {
-      for {
-        t <- get(box)
-        _ <- f.replace(t, boxId)
-      } yield ()
-    }
+    for {
+      id <- getId(box)
+      _ <- if (id == boxId) {
+        for {
+          t <- peek
+          //If we have some data to read, read it and use values
+          _ <- if (t != EndToken) {
+            for {
+              newT <- f.read
+              _ <- set(box, newT)
+            } yield ()
+            
+          //There is no data left, so nothing to do - just return immediately
+          } else {
+            nothing            
+          }
+        } yield ()
+        
+      //If this is not our box, recurse to its contents
+      } else {
+        for {
+          t <- get(box)
+          _ <- f.replace(t, boxId)
+        } yield ()
+      }
+    } yield ()
+    
   }
 
-  protected def modifyField[T, N <: Product, A <: Action[N]](n: N, index: Int, boxId: Long, readsAction: Option[Reads[A]])(implicit f: Format[T]) = {
+  protected def modifyField[T, N <: Product, A <: Action[N]](n: N, index: Int, id: Long, readsAction: Option[Reads[A]])(implicit f: Format[T]) = {
     import BoxReaderDeltaF._
 
     val box = n.productElement(index).asInstanceOf[Box[T]]
 
-    //If this is our box and we have a readsAction, use it to read an action
-    //from tokens and then perform that action
-    if (box.id == boxId) {
-      readsAction.map (r => {
-        for {
-          token <- peek
-          
-          //If we are out of tokens, action has already been performed,
-          //so do nothing
-          _ <- if (token == EndToken) {
-            nothing
+    //FIXME in nodeFormatsN instances, first call something like first part of this function
+    //to handle case that id matches node, then if NOT, call something like second part
+    //on each field so we can recurse through boxes
+
+    //If this node matches id and we have a readsAction, use it to read an action
+    //from tokens and then perform that action on the node
+    for {
+      nodeId <- getId(n)
+      _ <- if (nodeId == id) {
+        readsAction.map (r => {
+          for {
+            token <- peek
             
-          //If we have tokens, read the action and perform it on the node
-          } else {
-            for {
-              action <- r.read
-              _ <- embedBoxScript(action.act(n))
-            } yield ()
-          }
+            //If we are out of tokens, action has already been performed,
+            //so do nothing
+            _ <- if (token == EndToken) {
+              nothing
+              
+            //If we have tokens, read the action and perform it on the node
+            } else {
+              for {
+                action <- r.read
+                _ <- embedBoxScript(action.act(n))
+              } yield ()
+            }
+          } yield ()
+        }).getOrElse(nothing)
+        
+      //If we are not the identified node, recurse to boxes contents
+      } else {
+        for {
+          t <- get(box)
+          _ <- f.modify(t, id)
         } yield ()
-      }).getOrElse(nothing)
-      
-    //If this is not our box, recurse to its contents
-    } else {
-      for {
-        t <- get(box)
-        _ <- f.modify(t, boxId)
-      } yield ()
-    }
+      }
+    } yield ()    
   }
 }
