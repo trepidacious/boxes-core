@@ -22,18 +22,10 @@ trait Ids {
  */
 trait IdsWriter extends Ids {
   /**
-   * Try to cache a thing. The result will tell us whether the thing
-   * is already cached:
-   *
-   *   If already cached, the IdResult is Cached(ref), where the
-   *   supplied ref can be written out in place of the object. This
-   *   refers back to the previous instance with the matching id.
-   *
-   *   If NOT already cached, the IdResult is NewId(id), where the
-   *   id should be written out with the object, so that it can be
-   *   referenced by future refs.
+   * Assign an id to a thing. If there was already an id assigned, the
+   * result is ExistingId(id), otherwise it is NewId(id)
    */
-  def cache(thing: Any): IdResult
+  def assignId(thing: Any): IdResult
 }
 
 /**
@@ -45,7 +37,7 @@ class IdsWriterDefault extends IdsWriter {
  private val c = collection.mutable.Map[Any, Long]()
  private var nextId = 42
  
- override def cache(thing:Any): IdResult = {
+ override def assignId(thing:Any): IdResult = {
    c.get(thing) match {
      case None =>
        val id = nextId
@@ -65,20 +57,24 @@ class IdsWriterDefault extends IdsWriter {
 
 /**
  * IdsWriter implementation that will use an underlying IdsWriter to
- * provide all actual ids. So this IdsWriter will only contain the
- * things that have been cached with this actual IdsWriter, but when
- * a new thing is cached, it will also be cached in the underlying
- * IdsWriter, and the id from the underlying IdsWriter will be used.
+ * provide all actual id values. 
+ * When assigning an id to a thing that has not been assigned a previous
+ * id in THIS IdsWriter, NewId(id) will still be returned, but the id
+ * assigned will always be from the underlying IdsWriter - it may be a
+ * new id or an existing one in that underlying IdsWriter. As you would
+ * expect, requesting an id for the same thing  later will still return
+ * ExistingId(id) with the same id.
+ *
  * This can be used to provide persistent ids that survive across
  * multiple writer scripts etc.
  */
-class IdsWriterOverlay(t: IdsWriter) extends IdsWriter {
+class IdsWriterOverlay(underlying: IdsWriter) extends IdsWriter {
   
   private val c = collection.mutable.Map[Any, Long]()
   
-  private def underlyingId(thing: Any) = t.cache(thing).id
+  private def underlyingId(thing: Any) = underlying.assignId(thing).id
   
-  override def cache(thing:Any): IdResult = {
+  override def assignId(thing:Any): IdResult = {
     c.get(thing) match {
       case None =>
         val id = underlyingId(thing)
@@ -94,14 +90,15 @@ class IdsWriterOverlay(t: IdsWriter) extends IdsWriter {
 }
 
 /**
- * Use a WeakHashMap to remember ids
+ * Use a WeakHashMap from things to their ids, to avoid retaining those things
+ * when they could otherwise be garbage collected.
  */
 class IdsWriterWeak extends IdsWriter {
 
   private val c = collection.mutable.WeakHashMap[Any, Long]()
   private var nextId = 42
 
-  override def cache(thing:Any): IdResult = {
+  override def assignId(thing:Any): IdResult = {
     c.get(thing) match {
       case None =>
         val id = nextId
