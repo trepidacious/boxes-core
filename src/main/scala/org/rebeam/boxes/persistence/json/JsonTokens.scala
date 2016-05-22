@@ -85,7 +85,6 @@ class JsonTokenWriter(writer: Writer, pretty: Boolean = false) extends TokenWrit
           case LinkId(id) =>
             println()
             print(quoted("_" + name + "_id") + ":" + prettySpace + id + ",")
-          case LinkRef(id) => new IncorrectTokenException("Cannot use DictEntry with LinkRef in json output, found ref to " + id)
         }
         print(quoted(name) + ":" + prettySpace)
 
@@ -453,14 +452,14 @@ class JsonReaderWriterFactory(pretty: Boolean = false) extends ReaderWriterFacto
 }
 
 class JsonIO(pretty: Boolean = false) extends IO(new JsonReaderWriterFactory(pretty)) {
-  def toJsonString[T: Writes](t: T, ids: IdsWriter = new IdsWriterDefault()): String = {
+  def toJsonString[T: Writes](t: T, ids: Ids = IdsDefault()): String = {
     val sw = new StringWriter()
     val w = new JsonTokenWriter(sw, pretty)
     Shelf.runWriter(Writing.write(t), w, ids)
     sw.toString
   }
 
-  def toJsonStringFromRevision[T: Writes](r: Revision, t: T, ids: IdsWriter = new IdsWriterDefault()): String = {
+  def toJsonStringFromRevision[T: Writes](r: Revision, t: T, ids: Ids = IdsDefault()): String = {
     val sw = new StringWriter()
     val w = new JsonTokenWriter(sw, pretty)
     BoxWriterScript.run(Writing.write(t), r, w, ids)

@@ -65,7 +65,7 @@ class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
   }
 
   def duplicatePerson(name: String, age: Int) = {
-    implicit val personFormat = nodeFormat2(Person.apply, Person.default)("name", "age", nodeName = PresentationName("Person"), boxLinkStrategy = EmptyLinks, nodeLinkStrategy = AllLinks)
+    implicit val personFormat = nodeFormat2(Person.apply, Person.default)("name", "age", nodeName = PresentationName("Person"))
 
     val bob = atomic{makePerson(name, age)}
 
@@ -91,7 +91,7 @@ class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
     }
   }
 
-  def duplicateIdenticalPersonList(boxLinkStrategy: NoDuplicatesLinkStrategy, nodeLinkStrategy: LinkStrategy) = {
+  def duplicateIdenticalPersonList(boxLinkStrategy: LinkStrategy, nodeLinkStrategy: LinkStrategy) = {
     implicit val personFormat = nodeFormat2(Person.apply, Person.default)("name", "age", None, nodeName = PresentationName("Person"), boxLinkStrategy, nodeLinkStrategy)
 
     //Create two persons with equal contents, but not the same person (not identical),
@@ -131,7 +131,7 @@ class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
     "duplicate Person" in duplicatePerson("bob", 34)
 
     "duplicate List[Person]" in {
-      implicit val personFormat = nodeFormat2(Person.apply, Person.default)("name", "age", nodeName = PresentationName("Person"), boxLinkStrategy = EmptyLinks, nodeLinkStrategy = AllLinks)
+      implicit val personFormat = nodeFormat2(Person.apply, Person.default)("name", "age", nodeName = PresentationName("Person"))
 
       val list = atomic {
         for {
@@ -179,36 +179,28 @@ class ProtobufSpec extends WordSpec with PropertyChecks with ShouldMatchers {
 
     "duplicate arbitrary Person" in forAll{ (name: String, age: Int) => duplicatePerson(name, age)}
 
-    "preserve identicality of Persons with AllLinks for nodes" in {
-      duplicateIdenticalPersonList(EmptyLinks, AllLinks)
-      info ("Boxes with empty links")
-
-      duplicateIdenticalPersonList(IdLinks, AllLinks)
-      info ("Boxes with id links")
-    }
-
-    "fail with NodeCacheException when writing duplicate persons without all links" in {
-
-      intercept[NodeCacheException] {
-        duplicateIdenticalPersonList(boxLinkStrategy = EmptyLinks, nodeLinkStrategy = EmptyLinks)
-      }
-      info ("Boxes and nodes with empty links")
-
-      intercept[NodeCacheException] {
-        duplicateIdenticalPersonList(boxLinkStrategy = IdLinks, nodeLinkStrategy = EmptyLinks)
-      }
-      info ("Boxes with id links, nodes with empty links")
-
-      intercept[NodeCacheException] {
-        duplicateIdenticalPersonList(boxLinkStrategy = EmptyLinks, nodeLinkStrategy = IdLinks)
-      }
-      info ("Boxes with empty links, nodes with id links")
-
-      intercept[NodeCacheException] {
-        duplicateIdenticalPersonList(boxLinkStrategy = IdLinks, nodeLinkStrategy = IdLinks)
-      }
-      info ("Boxes and nodes with id links")
-    }
+    // "fail with NodeCacheException when writing duplicate persons without all links" in {
+    // 
+    //   intercept[NodeCacheException] {
+    //     duplicateIdenticalPersonList(boxLinkStrategy = EmptyLinks, nodeLinkStrategy = EmptyLinks)
+    //   }
+    //   info ("Boxes and nodes with empty links")
+    // 
+    //   intercept[NodeCacheException] {
+    //     duplicateIdenticalPersonList(boxLinkStrategy = IdLinks, nodeLinkStrategy = EmptyLinks)
+    //   }
+    //   info ("Boxes with id links, nodes with empty links")
+    // 
+    //   intercept[NodeCacheException] {
+    //     duplicateIdenticalPersonList(boxLinkStrategy = EmptyLinks, nodeLinkStrategy = IdLinks)
+    //   }
+    //   info ("Boxes with empty links, nodes with id links")
+    // 
+    //   intercept[NodeCacheException] {
+    //     duplicateIdenticalPersonList(boxLinkStrategy = IdLinks, nodeLinkStrategy = IdLinks)
+    //   }
+    //   info ("Boxes and nodes with id links")
+    // }
 
     "duplicate arbitrary CaseClass" in  {
       forAll{(s: String, i: Int) => duplicateCaseClass(CaseClass(s, i))}

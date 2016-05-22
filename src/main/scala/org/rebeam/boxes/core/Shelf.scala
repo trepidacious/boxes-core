@@ -74,7 +74,7 @@ object Shelf {
     throw new RuntimeException("Shelf.runReaderOrException failed - should not occur for valid tokens and formats")
   )
 
-  def runWriter[A](s: BoxWriterScript[A], writer: TokenWriter, ids: IdsWriter): A = BoxWriterScript.run(s, currentRevision, writer, ids)._1
+  def runWriter[A](s: BoxWriterScript[A], writer: TokenWriter, ids: Ids): A = BoxWriterScript.run(s, currentRevision, writer, ids)._1
 
   def commit(rad: RevisionAndDeltas): Option[Revision] = {
     //TODO: Note we can be more optimistic here - get the current revision, try to apply it and if that works, lock

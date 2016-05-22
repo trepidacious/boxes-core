@@ -72,7 +72,6 @@ class ProtobufTokenReader(is: CodedInputStream, onClose: => Unit) extends TokenR
     }
 
     def readLink() = is.readRawVarint32() match {
-      case ProtobufTokens.linkRef => LinkRef(is.readRawVarint64())
       case ProtobufTokens.linkId => LinkId(is.readRawVarint64())
       case ProtobufTokens.linkEmpty => LinkEmpty
       case _ => throw new IOException("Invalid link type")
@@ -121,9 +120,6 @@ class ProtobufTokenWriter(os: CodedOutputStream, onClose: => Unit) extends Token
 
     def writeLink(link: Link) = link match {
       case LinkEmpty => os.writeRawVarint32(linkEmpty)
-      case LinkRef(id) =>
-        os.writeRawVarint32(linkRef)
-        os.writeRawVarint64(id)
       case LinkId(id) =>
         os.writeRawVarint32(linkId)
         os.writeRawVarint64(id)

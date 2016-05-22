@@ -1,39 +1,27 @@
 package org.rebeam.boxes.persistence
 
 /**
- * A link, either empty, or indicating that an object can be linked to (referenced), or indicating
- * that it links to another (references it).
+ * A link, either empty, or giving an identifier for an object
  */
 sealed trait Link
 
 /**
- * Link referencing another object (of same type)
- * @param id  The id of the referenced object
- */
-case class LinkRef(id: Long) extends Link
-
-/**
- * Link indicating that this object can be referenced using
- * the specified id from another object (of the same type)
+ * Link associating an identifier with this object
  * @param id  The id of this object
  */
 case class LinkId(id: Long) extends Link
 
 /**
- * No link for this object - it doesn't reference any other object, and
- * cannot be referenced
+ * No link for this object - it isn't identified
  */
 case object LinkEmpty extends Link
 
 /**
  * Gives the strategy to be used when reading and writing data elements that support Links
  */
-sealed trait LinkStrategy
-
-/**
- * A subset of LinkStrategies that are suitable for use with strict formats like NodeFormat
- */
-sealed trait NoDuplicatesLinkStrategy extends LinkStrategy
+sealed trait LinkStrategy {
+  def link(id: Long): Link
+}
 
 /**
  * When writing tokens, only LinkEmpty links are used, and as a result "mutable" data elements must not be duplicated -
@@ -51,7 +39,9 @@ sealed trait NoDuplicatesLinkStrategy extends LinkStrategy
  * Data with no references or duplicates may also be more predictable and easier to understand.
  * When reading token data, only LinkEmpty links must be present.
  */
-case object EmptyLinks extends LinkStrategy with NoDuplicatesLinkStrategy
+case object EmptyLinks extends LinkStrategy {
+  def link(id: Long) = LinkEmpty
+}
 
 /**
  * When writing tokens, only LinkId links are used, and as a result "mutable" data elements must not be duplicated -
@@ -70,14 +60,6 @@ case object EmptyLinks extends LinkStrategy with NoDuplicatesLinkStrategy
  * server makes changes to those boxes.
  * When reading token data, only LinkEmpty links must be present.
  */
-case object IdLinks extends LinkStrategy with NoDuplicatesLinkStrategy
-
-/**
- * Data elements are serialised and deserialised using LinkId the first time an element is encountered, and LinkRef
- * each subsequent time that an equal element is encountered. LinkEmpty is never used. This means that where a
- * single data elementis present at more than one position in the graph, it will be deserialised as a single data
- * element in more than one position.
- * This is most suited for data being stored for later reading and use in this library, for example saving data
- * to a file. This is the only strategy that permits duplicates.
- */
-case object AllLinks extends LinkStrategy
+case object IdLinks extends LinkStrategy {
+  def link(id: Long) = LinkId(id)
+}

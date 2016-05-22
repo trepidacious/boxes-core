@@ -11,7 +11,7 @@ import Scalaz._
 
 class NodeFormatsBase {
   
-  protected def writeDictEntry[T: Format](n: Product, name: String, index: Int, linkStrategy: NoDuplicatesLinkStrategy) = {
+  protected def writeDictEntry[T: Format](n: Product, name: String, index: Int, linkStrategy: LinkStrategy) = {
 
     import BoxWriterDeltaF._
 
@@ -23,25 +23,14 @@ class NodeFormatsBase {
     //from default with new boxes is valid. Note that we don't really care if other Formats end up referencing our
     //Boxes later - we add them to cache when reading.
     for {
-      cr <- assignId(box)
-      _ <- cr match {
-        case ExistingId(id) => throw new BoxCacheException("Box id " + box.id + " was already cached as id " + id + ", but NodeFormats doesn't work with multiply-referenced Boxes")
-        case NewId(id) => 
-          val link = linkStrategy match {
-            case IdLinks => LinkId(id)
-            case EmptyLinks => LinkEmpty
-          }
+      id <- getId(box)
+      
+      //Open an entry for the Box
+      _ <- put(DictEntry(name, linkStrategy.link(id)))
 
-          for {
-            //Open an entry for the Box
-            _ <- put(DictEntry(name, link))
-
-            //Cache the box whether we used LinkId or LinkEmpty - we use this to avoid duplicates in either case, and for possible references outside nodes
-            _ <- assignId(box) //TODO this should already have been done on line 50?
-            v <- get(box) //Note we can't use box.get here since it returned BoxScript. Should maybe use implicits for this
-            _ <- implicitly[Format[T]].write(v)
-          } yield ()
-      }
+      //Cache the box whether we used LinkId or LinkEmpty - we use this to avoid duplicates in either case, and for possible references outside nodes
+      v <- get(box) //Note we can't use box.get here since it returned BoxScript. Should maybe use implicits for this
+      _ <- implicitly[Format[T]].write(v)
 
     } yield ()
 
@@ -53,53 +42,24 @@ class NodeFormatsBase {
     val box = n.productElement(index).asInstanceOf[Box[T]]
 
     for {
-      //We accept LinkEmpty, with nothing to do, or LinkId, in which case we putBox in case of any later references.
-      //We do NOT accept LinkRef, since we never write one.
-      _ <- link match {
-        case LinkEmpty => nothing                    //No cache stuff to do
-        case LinkId(id) => putCached(id, box)     //Cache our box for anything using it later in stream
-        case LinkRef(id) => throw new IncorrectTokenException("DictEntry must NOT have a LinkRef in a Node Dict, found ref to " + id)
-      }
       v <- implicitly[Format[T]].read
       _ <- set(box, v)
     } yield ()
   }
 
   protected def writeNode[N](n: N, name: TokenName, nodeLinkStrategy: LinkStrategy, writeEntriesAndClose: N => BoxWriterScript[Unit]) = {
-
     import BoxWriterDeltaF._
-
-    nodeLinkStrategy match {
-      case AllLinks =>
-        assignId(n) flatMap {
-          case ExistingId(id) => put(OpenDict(name, LinkRef(id)))
-          case NewId(id) => put (OpenDict(name, LinkId(id))) flatMap (_ => writeEntriesAndClose(n))
-        }
-
-      case IdLinks =>
-        assignId(n) flatMap {
-          case ExistingId(id) => throw new NodeCacheException("Node " + n + " was already cached, but nodeLinkStrategy is " + nodeLinkStrategy)
-          case NewId(id) => put(OpenDict(name, LinkId(id))) flatMap (_ => writeEntriesAndClose(n))
-        }
-
-      case EmptyLinks =>
-        assignId(n) flatMap {
-          case ExistingId(id) => throw new NodeCacheException("Node " + n + " was already cached, but nodeLinkStrategy is " + nodeLinkStrategy)
-          case NewId(id) => put (OpenDict(name, LinkEmpty)) flatMap (_ => writeEntriesAndClose(n))
-        }
-    }
+    for {
+      id <- getId(n)
+      _ <- put(OpenDict(name, nodeLinkStrategy.link(id))) flatMap (_ => writeEntriesAndClose(n))
+    } yield ()
   }
 
   protected def readNode[N](readEntriesAndClose: BoxReaderScript[N]) = {
     import BoxReaderDeltaF._
 
     pull flatMap {
-      case OpenDict(name, LinkEmpty) => readEntriesAndClose
-      case OpenDict(name, LinkRef(id)) => getCached(id) map (_.asInstanceOf[N])
-      case OpenDict(name, LinkId(id)) => for {
-        n <- readEntriesAndClose
-        _ <- putCached(id, n)
-      } yield n
+      case OpenDict(name, _) => readEntriesAndClose
       case _ => throw new IncorrectTokenException("Expected OpenDict at start of Map[String, _]")
     }
   }
