@@ -73,9 +73,6 @@ case class PullStringF[Next](toNext: String => Next) extends BoxReaderDeltaF[Nex
 case class GetCachedF[Next](id: Long, toNext: Any => Next) extends BoxReaderDeltaF[Next]
 case class PutCachedF[Next](id: Long, thing: Any, next: Next) extends BoxReaderDeltaF[Next]
 
-case class GetCachedBoxF[Next](id: Long, toNext: Box[Any] => Next) extends BoxReaderDeltaF[Next]
-case class PutCachedBoxF[Next, T](id: Long, box: Box[T], next: Next) extends BoxReaderDeltaF[Next]
-
 //FIXME note this is possibly not necessary in the long term, however it's fairly easy to implement, 
 //and allows for use cases like Node reading, where we want to run a BoxScript to build a default instance
 //within a BoxReaderScript. We could use a BoxReaderScript for the default, but then we can't use it in normal
@@ -87,7 +84,7 @@ case class EmbedBoxScript[Next, T](script: BoxScript[T], toNext: T => Next) exte
 //Cases only usable for persistence - writer (Box -> Tokens)
 case class PutTokenF[Next](t: Token, next: Next) extends BoxWriterDeltaF[Next]
 
-case class CacheF[Next](t: Any, toNext: IdResult => Next) extends BoxWriterDeltaF[Next]
+case class AssignIdF[Next](t: Any, toNext: IdResult => Next) extends BoxWriterDeltaF[Next]
 
 object BoxDeltaF {
   val functor: Functor[BoxDeltaF] = new Functor[BoxDeltaF] {
@@ -171,10 +168,8 @@ object BoxReaderDeltaF {
       case PullStringF(toNext) => PullStringF(toNext andThen f)
 
       case PutCachedF(id, thing, next) => PutCachedF(id, thing, f(next))
-      case PutCachedBoxF(id, box, next) => PutCachedBoxF(id, box, f(next))
 
       case GetCachedF(id, toNext) => GetCachedF(id, toNext andThen f)
-      case GetCachedBoxF(id, toNext) => GetCachedBoxF(id, toNext andThen f)
 
       case EmbedBoxScript(script, toNext) => EmbedBoxScript(script, toNext andThen f)
 
@@ -247,11 +242,6 @@ object BoxReaderDeltaF {
   def putCached(id: Long, thing: Any): BoxReaderScript[Unit]
     = liftF(PutCachedF(id, thing, ()): BoxReaderDeltaF[Unit])(boxReaderDeltaFunctor)
 
-  def getCachedBox(id: Long): BoxReaderScript[Box[Any]]
-    = liftF(GetCachedBoxF(id, identity[Box[Any]]): BoxReaderDeltaF[Box[Any]])(boxReaderDeltaFunctor)
-  def putCachedBox[T](id: Long, box: Box[T]): BoxReaderScript[Unit] 
-    = liftF(PutCachedBoxF(id, box, ()): BoxReaderDeltaF[Unit])(boxReaderDeltaFunctor)
-
   def embedBoxScript[T](script: BoxScript[T]): BoxReaderScript[T]
     = liftF(EmbedBoxScript(script, identity[T]))(boxReaderDeltaFunctor)
 }
@@ -264,7 +254,7 @@ object BoxWriterDeltaF {
 
       case PutTokenF(t, next) => PutTokenF(t, f(next))
 
-      case CacheF(t, toNext) => CacheF(t, toNext andThen f)
+      case AssignIdF(t, toNext) => AssignIdF(t, toNext andThen f)
 
       case RevisionIndexF(toNext) => RevisionIndexF(toNext andThen f)
     }
@@ -279,8 +269,8 @@ object BoxWriterDeltaF {
   def put(t: Token): BoxWriterScript[Unit]
     = liftF(PutTokenF(t, ()): BoxWriterDeltaF[Unit])(boxWriterDeltaFunctor)
 
-  def cache(thing: Any): BoxWriterScript[IdResult]
-    = liftF(CacheF(thing, identity[IdResult]): BoxWriterDeltaF[IdResult])(boxWriterDeltaFunctor)
+  def assignId(thing: Any): BoxWriterScript[IdResult]
+    = liftF(AssignIdF(thing, identity[IdResult]): BoxWriterDeltaF[IdResult])(boxWriterDeltaFunctor)
 
   val nothing = just(())
 

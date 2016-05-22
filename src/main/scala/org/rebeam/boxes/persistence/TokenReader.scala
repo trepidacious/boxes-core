@@ -8,8 +8,6 @@ trait TokenReader {
 
   def pull(): Token
 
-  private val boxCache = new scala.collection.mutable.HashMap[Long, Box[_]]()
-
   private val cache = new scala.collection.mutable.HashMap[Long, Any]()
 
   def putCache(id: Long, thing: Any) = cache.put(id, thing) match {
@@ -17,17 +15,8 @@ trait TokenReader {
    case _ =>
   }
 
-  def getCacheOption(id: Long) = cache.get(id)
+  private def getCacheOption(id: Long) = cache.get(id)
   def getCache(id: Long) = getCacheOption(id).getOrElse(throw new CacheException("No cached thing for id " + id))
-
-  def putBox(id: Long, box: Box[_]) {
-   if (boxCache.get(id).isDefined) throw new BoxCacheException("Already have a box for id " + id)
-   boxCache.put(id, box)
-  }
-
-  def getBox(id: Long): Box[_] = {
-   boxCache.getOrElse(id, throw new BoxCacheException("No cached box for id " + id))
-  }
 
   @throws [IncorrectTokenException]
   def pullAndAssertEquals(t:Token) {

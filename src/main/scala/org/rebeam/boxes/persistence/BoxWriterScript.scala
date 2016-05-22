@@ -36,7 +36,7 @@ object BoxWriterScript {
       writer.write(t)
       run(next, rev, writer, ids)
 
-    case -\/(CacheF(thing, toNext)) =>
+    case -\/(AssignIdF(thing, toNext)) =>
       val cr = ids.assignId(thing)
       val next = toNext(cr)
       run(next, rev, writer, ids)

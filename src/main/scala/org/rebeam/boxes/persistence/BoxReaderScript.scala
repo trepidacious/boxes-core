@@ -131,15 +131,6 @@ object BoxReaderScript {
       reader.putCache(id, thing)
       run(next, rad, boxDeltas, reader)      
 
-    case -\/(GetCachedBoxF(id, toNext)) =>
-      val box = reader.getBox(id)
-      val next = toNext(box.asInstanceOf[Box[Any]])
-      run(next, rad, boxDeltas, reader)
-
-    case -\/(PutCachedBoxF(id, box, next)) => 
-      reader.putBox(id, box.asInstanceOf[Box[Any]])
-      run(next, rad, boxDeltas, reader)
-
     case -\/(RevisionIndexF(toNext)) =>
       val next = toNext(rad.revision.index)
       run(next, rad, boxDeltas, reader)

@@ -23,7 +23,7 @@ class NodeFormatsBase {
     //from default with new boxes is valid. Note that we don't really care if other Formats end up referencing our
     //Boxes later - we add them to cache when reading.
     for {
-      cr <- cache(box)
+      cr <- assignId(box)
       _ <- cr match {
         case ExistingId(id) => throw new BoxCacheException("Box id " + box.id + " was already cached as id " + id + ", but NodeFormats doesn't work with multiply-referenced Boxes")
         case NewId(id) => 
@@ -37,7 +37,7 @@ class NodeFormatsBase {
             _ <- put(DictEntry(name, link))
 
             //Cache the box whether we used LinkId or LinkEmpty - we use this to avoid duplicates in either case, and for possible references outside nodes
-            _ <- cache(box) //TODO this should already have been done on line 50?
+            _ <- assignId(box) //TODO this should already have been done on line 50?
             v <- get(box) //Note we can't use box.get here since it returned BoxScript. Should maybe use implicits for this
             _ <- implicitly[Format[T]].write(v)
           } yield ()
@@ -57,7 +57,7 @@ class NodeFormatsBase {
       //We do NOT accept LinkRef, since we never write one.
       _ <- link match {
         case LinkEmpty => nothing                    //No cache stuff to do
-        case LinkId(id) => putCachedBox(id, box)     //Cache our box for anything using it later in stream
+        case LinkId(id) => putCached(id, box)     //Cache our box for anything using it later in stream
         case LinkRef(id) => throw new IncorrectTokenException("DictEntry must NOT have a LinkRef in a Node Dict, found ref to " + id)
       }
       v <- implicitly[Format[T]].read
@@ -71,19 +71,19 @@ class NodeFormatsBase {
 
     nodeLinkStrategy match {
       case AllLinks =>
-        cache(n) flatMap {
+        assignId(n) flatMap {
           case ExistingId(id) => put(OpenDict(name, LinkRef(id)))
           case NewId(id) => put (OpenDict(name, LinkId(id))) flatMap (_ => writeEntriesAndClose(n))
         }
 
       case IdLinks =>
-        cache(n) flatMap {
+        assignId(n) flatMap {
           case ExistingId(id) => throw new NodeCacheException("Node " + n + " was already cached, but nodeLinkStrategy is " + nodeLinkStrategy)
           case NewId(id) => put(OpenDict(name, LinkId(id))) flatMap (_ => writeEntriesAndClose(n))
         }
 
       case EmptyLinks =>
-        cache(n) flatMap {
+        assignId(n) flatMap {
           case ExistingId(id) => throw new NodeCacheException("Node " + n + " was already cached, but nodeLinkStrategy is " + nodeLinkStrategy)
           case NewId(id) => put (OpenDict(name, LinkEmpty)) flatMap (_ => writeEntriesAndClose(n))
         }

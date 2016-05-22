@@ -1,8 +1,12 @@
 package org.rebeam.boxes.persistence
 
 /**
- * Associates Long ids with arbitrary things. Should be assumed to assign
- * the same id to all equal things.
+ * Gives access to an association of Long ids with arbitrary things. 
+ * Should be assumed to assign the same id to all equal things.
+ * 
+ * Often ids are those that have been added via IdsWriter trait, but may
+ * be pre-existing ids that are known even before they are assigned.
+ *
  * Currently may be mutable.
  * TODO make guaranteed immutable
  */
@@ -22,8 +26,15 @@ trait Ids {
  */
 trait IdsWriter extends Ids {
   /**
-   * Assign an id to a thing. If there was already an id assigned, the
-   * result is ExistingId(id), otherwise it is NewId(id)
+   * Assign an id to a thing. If there was already an id assigned via this
+   * IdsWriter, the result is ExistingId(id), otherwise it is NewId(id).
+   * Note that things may already have a known id before they are assigned via
+   * this IdsWriter, and these things will return Some(id) from the idsFor 
+   * method. This is the id that will be returned via assignId, and on the first
+   * call to assignId, a New(id) will still be returned.
+   * This allows an IdsWriter to provide access to and work with pre-existing
+   * persistent ids, while still allowing the user of the IdsWriter to track
+   * whether a particular thing has been encountered before during writing.
    */
   def assignId(thing: Any): IdResult
 }
@@ -85,7 +96,9 @@ class IdsWriterOverlay(underlying: IdsWriter) extends IdsWriter {
     }
   } 
   
-  override def idFor(thing: Any): Option[Long] = c.get(thing)
+  //Note we get the id from the underlying IdsWriter, so that we will return
+  //preexisting ids even before they are assigned by the overlay.
+  override def idFor(thing: Any): Option[Long] = underlying.idFor(thing)
 
 }
 

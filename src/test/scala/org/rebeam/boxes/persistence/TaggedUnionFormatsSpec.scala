@@ -44,8 +44,8 @@ class TaggedUnionFormatsSpec extends WordSpec with PropertyChecks with ShouldMat
 
 
   implicit val oneOrTwoFormat = {
-    implicit val oneFormat = nodeFormat1(One.apply, One.default)("first")
-    implicit val twoFormat = nodeFormat2(Two.apply, Two.default)("first", "second")
+    implicit val oneFormat = nodeFormat1(One.apply, One.default)("first", boxLinkStrategy = EmptyLinks, nodeLinkStrategy = EmptyLinks)
+    implicit val twoFormat = nodeFormat2(Two.apply, Two.default)("first", "second", boxLinkStrategy = EmptyLinks, nodeLinkStrategy = EmptyLinks)
 
     //Note we have to specify the union type OneOrTwo
     taggedUnionFormat[OneOrTwo](
@@ -71,10 +71,10 @@ class TaggedUnionFormatsSpec extends WordSpec with PropertyChecks with ShouldMat
     
     "encode some values" in {
       val one = atomic { One.default("one") }
-      JsonIO.toJsonString(one) shouldBe """{"one":{"_first_id":""" + one.first.id + ""","first":"one"}}"""
+      JsonIO.toJsonString(one) shouldBe """{"one":{"first":"one"}}"""
 
       val two = atomic { Two.default("two", 2) }
-      JsonIO.toJsonString(two) shouldBe """{"two":{"_first_id":""" + two.first.id + ""","first":"two","_second_id":""" + two.second.id + ""","second":2}}"""
+      JsonIO.toJsonString(two) shouldBe """{"two":{"first":"two","second":2}}"""
     }
 
     "duplicate some values" in {
@@ -110,7 +110,7 @@ class TaggedUnionFormatsSpec extends WordSpec with PropertyChecks with ShouldMat
       val two = atomic { Two.default("two", 2) }
       
       val list = List[OneOrTwo](one, two)
-      JsonIO.toJsonString(list) shouldBe """[{"one":{"_first_id":""" + one.first.id + ""","first":"one"}},{"two":{"_first_id":""" + two.first.id + ""","first":"two","_second_id":""" + two.second.id + ""","second":2}}]"""
+      JsonIO.toJsonString(list) shouldBe """[{"one":{"first":"one"}},{"two":{"first":"two","second":2}}]"""
     }
 
   }
