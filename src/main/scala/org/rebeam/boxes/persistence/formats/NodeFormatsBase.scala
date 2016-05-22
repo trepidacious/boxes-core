@@ -25,8 +25,8 @@ class NodeFormatsBase {
     for {
       cr <- cache(box)
       _ <- cr match {
-        case Cached(id) => throw new BoxCacheException("Box id " + box.id + " was already cached as id " + id + ", but NodeFormats doesn't work with multiply-referenced Boxes")
-        case New(id) => 
+        case ExistingId(id) => throw new BoxCacheException("Box id " + box.id + " was already cached as id " + id + ", but NodeFormats doesn't work with multiply-referenced Boxes")
+        case NewId(id) => 
           val link = linkStrategy match {
             case IdLinks => LinkId(id)
             case EmptyLinks => LinkEmpty
@@ -72,20 +72,20 @@ class NodeFormatsBase {
     nodeLinkStrategy match {
       case AllLinks =>
         cache(n) flatMap {
-          case Cached(id) => put(OpenDict(name, LinkRef(id)))
-          case New(id) => put (OpenDict(name, LinkId(id))) flatMap (_ => writeEntriesAndClose(n))
+          case ExistingId(id) => put(OpenDict(name, LinkRef(id)))
+          case NewId(id) => put (OpenDict(name, LinkId(id))) flatMap (_ => writeEntriesAndClose(n))
         }
 
       case IdLinks =>
         cache(n) flatMap {
-          case Cached(id) => throw new NodeCacheException("Node " + n + " was already cached, but nodeLinkStrategy is " + nodeLinkStrategy)
-          case New(id) => put(OpenDict(name, LinkId(id))) flatMap (_ => writeEntriesAndClose(n))
+          case ExistingId(id) => throw new NodeCacheException("Node " + n + " was already cached, but nodeLinkStrategy is " + nodeLinkStrategy)
+          case NewId(id) => put(OpenDict(name, LinkId(id))) flatMap (_ => writeEntriesAndClose(n))
         }
 
       case EmptyLinks =>
         cache(n) flatMap {
-          case Cached(id) => throw new NodeCacheException("Node " + n + " was already cached, but nodeLinkStrategy is " + nodeLinkStrategy)
-          case New(id) => put (OpenDict(name, LinkEmpty)) flatMap (_ => writeEntriesAndClose(n))
+          case ExistingId(id) => throw new NodeCacheException("Node " + n + " was already cached, but nodeLinkStrategy is " + nodeLinkStrategy)
+          case NewId(id) => put (OpenDict(name, LinkEmpty)) flatMap (_ => writeEntriesAndClose(n))
         }
     }
   }

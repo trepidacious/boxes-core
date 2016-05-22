@@ -15,8 +15,8 @@ private class BoxFormat[T](linkStrategy: LinkStrategy)(implicit format: Format[T
     import BoxWriterDeltaF._
     linkStrategy match {
       case AllLinks => cache(box) flatMap {
-        case Cached(id) => put(BoxToken(LinkRef(id)))
-        case New(id) => for {
+        case ExistingId(id) => put(BoxToken(LinkRef(id)))
+        case NewId(id) => for {
           _ <- put(BoxToken(LinkId(id)))
           v <- get(box)
           _ <- format.write(v)
@@ -24,8 +24,8 @@ private class BoxFormat[T](linkStrategy: LinkStrategy)(implicit format: Format[T
       }
 
       case EmptyLinks => cache(box) flatMap {
-        case Cached(id) => throw new BoxCacheException("Box id " + id + " was already cached, but boxLinkStrategy is EmptyLinks")
-        case New(id) => for {
+        case ExistingId(id) => throw new BoxCacheException("Box id " + id + " was already cached, but boxLinkStrategy is EmptyLinks")
+        case NewId(id) => for {
           _ <- put(BoxToken(LinkEmpty))
           v <- get(box)
           _ <- format.write(v)
@@ -33,8 +33,8 @@ private class BoxFormat[T](linkStrategy: LinkStrategy)(implicit format: Format[T
       }
 
       case IdLinks => cache(box) flatMap {
-        case Cached(id) => throw new BoxCacheException("Box id " + id + " was already cached, but boxLinkStrategy is IdLinks")
-        case New(id) => for {
+        case ExistingId(id) => throw new BoxCacheException("Box id " + id + " was already cached, but boxLinkStrategy is IdLinks")
+        case NewId(id) => for {
           _ <- put(BoxToken(LinkId(id)))
           v <- get(box)
           _ <- format.write(v)

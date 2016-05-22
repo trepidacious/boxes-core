@@ -25,15 +25,15 @@ trait IdsWriter extends Ids {
    * Try to cache a thing. The result will tell us whether the thing
    * is already cached:
    *
-   *   If already cached, the CacheResult is Cached(ref), where the
+   *   If already cached, the IdResult is Cached(ref), where the
    *   supplied ref can be written out in place of the object. This
    *   refers back to the previous instance with the matching id.
    *
-   *   If NOT already cached, the CacheResult is New(id), where the
+   *   If NOT already cached, the IdResult is NewId(id), where the
    *   id should be written out with the object, so that it can be
    *   referenced by future refs.
    */
-  def cache(thing: Any): CacheResult
+  def cache(thing: Any): IdResult
 }
 
 /**
@@ -45,15 +45,15 @@ class IdsWriterDefault extends IdsWriter {
  private val c = collection.mutable.Map[Any, Long]()
  private var nextId = 42
  
- override def cache(thing:Any): CacheResult = {
+ override def cache(thing:Any): IdResult = {
    c.get(thing) match {
      case None =>
        val id = nextId
        nextId = nextId + 1
        c.put(thing, id)
-       New(id)
+       NewId(id)
  
-     case Some(ref) => Cached(ref)
+     case Some(ref) => ExistingId(ref)
    }
  } 
  
@@ -78,14 +78,14 @@ class IdsWriterOverlay(t: IdsWriter) extends IdsWriter {
   
   private def underlyingId(thing: Any) = t.cache(thing).id
   
-  override def cache(thing:Any): CacheResult = {
+  override def cache(thing:Any): IdResult = {
     c.get(thing) match {
       case None =>
         val id = underlyingId(thing)
         c.put(thing, id)
-        New(id)
+        NewId(id)
   
-      case Some(ref) => Cached(ref)
+      case Some(ref) => ExistingId(ref)
     }
   } 
   
@@ -101,15 +101,15 @@ class IdsWriterWeak extends IdsWriter {
   private val c = collection.mutable.WeakHashMap[Any, Long]()
   private var nextId = 42
 
-  override def cache(thing:Any): CacheResult = {
+  override def cache(thing:Any): IdResult = {
     c.get(thing) match {
       case None =>
         val id = nextId
         nextId = nextId + 1
         c.put(thing, id)
-        New(id)
+        NewId(id)
 
-      case Some(ref) => Cached(ref)
+      case Some(ref) => ExistingId(ref)
     }
   } 
 

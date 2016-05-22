@@ -87,7 +87,7 @@ case class EmbedBoxScript[Next, T](script: BoxScript[T], toNext: T => Next) exte
 //Cases only usable for persistence - writer (Box -> Tokens)
 case class PutTokenF[Next](t: Token, next: Next) extends BoxWriterDeltaF[Next]
 
-case class CacheF[Next](t: Any, toNext: CacheResult => Next) extends BoxWriterDeltaF[Next]
+case class CacheF[Next](t: Any, toNext: IdResult => Next) extends BoxWriterDeltaF[Next]
 
 object BoxDeltaF {
   val functor: Functor[BoxDeltaF] = new Functor[BoxDeltaF] {
@@ -279,8 +279,8 @@ object BoxWriterDeltaF {
   def put(t: Token): BoxWriterScript[Unit]
     = liftF(PutTokenF(t, ()): BoxWriterDeltaF[Unit])(boxWriterDeltaFunctor)
 
-  def cache(thing: Any): BoxWriterScript[CacheResult]
-    = liftF(CacheF(thing, identity[CacheResult]): BoxWriterDeltaF[CacheResult])(boxWriterDeltaFunctor)
+  def cache(thing: Any): BoxWriterScript[IdResult]
+    = liftF(CacheF(thing, identity[IdResult]): BoxWriterDeltaF[IdResult])(boxWriterDeltaFunctor)
 
   val nothing = just(())
 
