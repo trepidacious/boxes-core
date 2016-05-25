@@ -34,22 +34,6 @@ object BoxTypes {
    */
   type BoxW[-A] = A => BoxScript[Unit]
 
-  /**
-   * Provides a BoxR and BoxW. Will often read and write the "same" state, however doesn't need to.
-   * 
-   * This should be used instead of a Box wherever that Box needs to be read and written, but
-   * no other features of the box are needed (for example the box id). This covers nearly all uses
-   * of Boxes.
-   *
-   * In summary, Box itself should be used when we want to create an actual data storage location,
-   * and BoxM (or BoxR/BoxW) when all we want to do is read/write that data. This means the primary
-   * use of Box is to create Nodes - case classes where (some or all) fields are Boxes.
-   */
-  case class BoxM[A](read: BoxScript[A], write: BoxW[A]) {
-    def apply() = read
-    def update(a: A) = write(a)
-  }
-
   type BoxReaderScript[A] = Free[BoxReaderDeltaF, A]
   implicit val boxReaderDeltaFunctor = BoxReaderDeltaF.boxReaderDeltaFunctor
 

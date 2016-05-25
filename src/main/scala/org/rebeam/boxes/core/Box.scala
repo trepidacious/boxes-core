@@ -4,7 +4,28 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import BoxTypes._
 
-class Box[T](val id: Long) extends Identifiable {
+sealed trait BoxL[A] {
+  def apply(): BoxScript[A]
+  def update(a: A): BoxScript[Unit]
+}
+
+/**
+ * Provides a BoxR and BoxW. Will often read and write the "same" state, however doesn't need to.
+ * 
+ * This should be used instead of a Box wherever that Box needs to be read and written, but
+ * no other features of the box are needed (for example the box id). This covers nearly all uses
+ * of Boxes.
+ *
+ * In summary, Box itself should be used when we want to create an actual data storage location,
+ * and BoxM (or BoxR/BoxW) when all we want to do is read/write that data. This means the primary
+ * use of Box is to create Nodes - case classes where (some or all) fields are Boxes.
+ */
+case class BoxM[A](read: BoxScript[A], write: BoxW[A]) extends BoxL[A] {
+  def apply() = read
+  def update(a: A) = write(a)
+}
+
+class Box[T](val id: Long) extends Identifiable with BoxL[T] {
 
   /**
    * Store changes to this box, as a map from the Change to the State that was
@@ -31,6 +52,9 @@ class Box[T](val id: Long) extends Identifiable {
   lazy val w = (t: T) => BoxScriptImports.set(this, t)
   lazy val m = BoxM(r, w)
   def readAs[A >: T] = r.map(t => t: A)
+
+  def apply() = BoxScriptImports.get(this)
+  def update(t: T) = BoxScriptImports.set(this, t)
 
 }
 
