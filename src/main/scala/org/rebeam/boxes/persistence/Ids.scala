@@ -27,19 +27,23 @@ trait IdsWithContents extends Ids {
 
 private class IdsMutable(private val c: collection.mutable.Map[Any, Long], private val firstId: Long) extends IdsWithContents {
 
- private var nextId = firstId
+  // println("Made new IdsMutable " + this)
+  // new Throwable().printStackTrace()
+
+  private var nextId = firstId
  
- override def idFor(thing: Any): Long = c.get(thing) match {
-  case None =>
-    val id = nextId
-    nextId = nextId + 1
-    c.put(thing, id)
-    id
+  override def idFor(thing: Any): Long = c.get(thing) match {
+    case None =>
+      val id = nextId
+      nextId = nextId + 1
+      c.put(thing, id)
+      // println("Made new id " + id + " in IdsMutable " + this)
+      id
 
-  case Some(id) => id
- }
+    case Some(id) => id
+  }
 
- override def contents:collection.immutable.Map[Any, Long] = c.toMap  
+  override def contents:collection.immutable.Map[Any, Long] = c.toMap  
  
 }
 
